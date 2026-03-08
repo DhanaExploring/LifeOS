@@ -28,6 +28,7 @@ const Fonts = () => (
 // ── Hook: manage Supabase auth session ──
 export function useAuth() {
   const [user, setUser] = useState(undefined); // undefined = loading, null = no user
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -36,7 +37,10 @@ export function useAuth() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+      }
       setUser(session?.user ?? null);
     });
 
@@ -48,12 +52,12 @@ export function useAuth() {
     setUser(null);
   };
 
-  return { user, signOut };
+  return { user, signOut, recoveryMode, setRecoveryMode };
 }
 
 // ── Login / Sign-up screen ──
-export default function AuthScreen() {
-  const [mode, setMode] = useState("login"); // login | signup | forgot
+export default function AuthScreen({ initialMode, onDone }) {
+  const [mode, setMode] = useState(initialMode || "login"); // login | signup | forgot | newpw
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -70,8 +74,17 @@ export default function AuthScreen() {
           redirectTo: window.location.origin,
         });
         if (error) throw error;
-        setMessage("Password reset link sent to your email.");
+        setMessage("Password reset link sent! Check your email.");
         setLoading(false);
+        return;
+      }
+
+      if (mode === "newpw") {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setMessage("Password updated! Redirecting…");
+        setLoading(false);
+        setTimeout(() => { if (onDone) onDone(); else window.location.reload(); }, 1200);
         return;
       }
 
@@ -148,7 +161,7 @@ export default function AuthScreen() {
               letterSpacing: "0.15em", textTransform: "uppercase",
               color: tk.ink3, marginTop: 8,
             }}>
-              {mode === "forgot" ? "Reset your password" : mode === "signup" ? "Create your account" : "Welcome back"}
+              {mode === "newpw" ? "Set new password" : mode === "forgot" ? "Reset your password" : mode === "signup" ? "Create your account" : "Welcome back"}
             </p>
           </div>
 
@@ -159,7 +172,8 @@ export default function AuthScreen() {
             boxShadow: "0 2px 20px rgba(44,36,22,0.07)",
           }}>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Email */}
+              {/* Email (hide on newpw) */}
+              {mode !== "newpw" && (
               <div>
                 <label style={{
                   fontFamily: "'DM Mono',monospace", fontSize: 10,
@@ -173,9 +187,10 @@ export default function AuthScreen() {
                   style={inputStyle}
                 />
               </div>
+              )}
 
-              {/* Password (hide on forgot) */}
-              {mode !== "forgot" && (
+              {/* Password (hide on forgot, show for newpw) */}
+              {(mode !== "forgot") && (
                 <div>
                   <label style={{
                     fontFamily: "'DM Mono',monospace", fontSize: 10,
@@ -190,6 +205,16 @@ export default function AuthScreen() {
                     style={inputStyle}
                   />
                 </div>
+              )}
+
+              {/* Confirm password for newpw */}
+              {mode === "newpw" && (
+                <p style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 11,
+                  color: tk.ink3, lineHeight: 1.5,
+                }}>
+                  Enter your new password (min 6 characters)
+                </p>
               )}
 
               {/* Error */}
@@ -216,7 +241,7 @@ export default function AuthScreen() {
 
               {/* Submit */}
               <button type="submit" disabled={loading} style={btnStyle}>
-                {loading ? "⏳" : mode === "forgot" ? "Send reset link" : mode === "signup" ? "Create account" : "Sign in"}
+                {loading ? "⏳" : mode === "newpw" ? "Update password" : mode === "forgot" ? "Send reset link" : mode === "signup" ? "Create account" : "Sign in"}
               </button>
             </form>
 
@@ -254,6 +279,11 @@ export default function AuthScreen() {
                   style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, color: tk.sage, fontWeight: 500 }}>
                   ← Back to sign in
                 </button>
+              )}
+              {mode === "newpw" && (
+                <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: tk.ink3 }}>
+                  Choose a strong password you'll remember.
+                </p>
               )}
             </div>
           </div>

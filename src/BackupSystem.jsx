@@ -276,25 +276,28 @@ import { createClient } from "@supabase/supabase-js";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-export async function pushToSupabase(state) {
+export async function pushToSupabase(state, userId) {
+  if (!userId) throw new Error("No user ID");
   const { error } = await supabase
     .from("lifeos_data")
-    .upsert({ id: "main", data: state, updated_at: new Date().toISOString() });
+    .upsert({ id: userId, data: state, updated_at: new Date().toISOString() });
   if (error) throw error;
 }
 
-export async function pullFromSupabase() {
+export async function pullFromSupabase(userId) {
+  if (!userId) throw new Error("No user ID");
   const { data, error } = await supabase
     .from("lifeos_data")
     .select("data")
-    .eq("id", "main")
+    .eq("id", userId)
     .single();
+  if (error && error.code === "PGRST116") return null;
   if (error) throw error;
   return data.data;
 }
 
-export function useSupabaseSync(appState, dispatch) {
-  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | synced | error
+export function useSupabaseSync(appState, dispatch, userId) {
+  const [syncStatus, setSyncStatus] = useState("idle");
   const [lastSynced, setLastSynced] = useState(getMeta().lastSupabaseSync || null);
   const [isConfigured] = useState(
     SUPABASE_URL !== "YOUR_SUPABASE_URL" && SUPABASE_KEY !== "YOUR_SUPABASE_ANON_KEY"
@@ -304,7 +307,7 @@ export function useSupabaseSync(appState, dispatch) {
     if (!isConfigured) { alert("Add your Supabase URL and key first. See BackupSystem.jsx setup instructions."); return; }
     setSyncStatus("syncing");
     try {
-      await pushToSupabase(appState);
+      await pushToSupabase(appState, userId);
       const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
       setLastSynced(now);
       setMeta({ ...getMeta(), lastSupabaseSync: now });
@@ -314,13 +317,13 @@ export function useSupabaseSync(appState, dispatch) {
       setSyncStatus("error");
       setTimeout(() => setSyncStatus("idle"), 3000);
     }
-  }, [isConfigured, appState]);
+  }, [isConfigured, appState, userId]);
 
   const pullFromCloud = useCallback(async () => {
     if (!isConfigured) { alert("Add your Supabase URL and key first."); return; }
     setSyncStatus("syncing");
     try {
-      const cloudData = await pullFromSupabase();
+      const cloudData = await pullFromSupabase(userId);
       if (cloudData) {
         dispatch({ type: "IMPORT_STATE", payload: cloudData });
       }
@@ -508,36 +511,7 @@ export function SettingsScreen({ state, dispatch, dark }) {
         </div>
       </div>
 
-      {/* ② Google Drive */}
-      <div style={cardStyle}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-          <span style={{fontSize:15}}>🗂</span>
-          <p style={{...lblStyle,marginBottom:0,flex:1}}>Google Drive</p>
-          <span style={badgeStyle(drive.isConfigured)}>{drive.isConfigured ? "Configured" : "Setup needed"}</span>
-        </div>
-        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Saves a backup JSON to your Google Drive automatically</p>
-
-        {!drive.isConfigured && (
-          <div style={{...infoBox("warn"),marginBottom:14}}>
-            <strong>Setup required:</strong> Add your Google Client ID to BackupSystem.jsx line ~65. See the inline instructions for a 10-minute setup at console.cloud.google.com
-          </div>
-        )}
-
-        {drive.lastDriveBackup && (
-          <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:12}}>Last Drive backup: <span style={{fontWeight:500}}>{drive.lastDriveBackup}</span></p>
-        )}
-
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={drive.backupToDrive} disabled={drive.status !== "idle"}
-            style={{...btnFill(t.sky),flex:1,textAlign:"center",opacity:drive.status!=="idle"?0.6:1}}>
-            {statusLabel(drive.status) || "⬆ Backup to Drive"}
-          </button>
-          <button onClick={drive.restoreFromDrive} disabled={drive.status !== "idle"}
-            style={{...btnGhost,flex:1,textAlign:"center",opacity:drive.status!=="idle"?0.6:1}}>
-            {drive.status !== "idle" ? "…" : "⬇ Restore from Drive"}
-          </button>
-        </div>
-      </div>
+      {/* ② Google Drive — hidden for now */}
 
       {/* ③ Supabase Cloud Sync */}
       <div style={cardStyle}>

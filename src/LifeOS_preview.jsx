@@ -778,7 +778,7 @@ const SCREENS = {
 };
 
 // ── ROOT ──────────────────────────────────────────────────────────────────────
-export default function LifeOS({ signOut, userEmail }) {
+export default function LifeOS({ signOut, userEmail, userId }) {
   const [state,dispatch] = useReducer(reducer, INIT);
   const [screen,setScreen] = useState("home");
   const [flash,setFlash]   = useState(false);
@@ -789,19 +789,20 @@ export default function LifeOS({ signOut, userEmail }) {
 
   // Pull from Supabase on first load
   useEffect(()=>{
-    pullFromSupabase()
+    if(!userId) return;
+    pullFromSupabase(userId)
       .then(data => { if(data) dispatch({type:"IMPORT_STATE",payload:data}); })
       .catch(()=>{})
       .finally(()=>setLoading(false));
-  },[]);
+  },[userId]);
 
   // Auto-push to Supabase on every state change (debounced, skip initial load)
   useEffect(()=>{
     if(initialLoad.current){ initialLoad.current=false; return; }
-    if(loading) return;
-    const t=setTimeout(()=>{ pushToSupabase(state).catch(()=>{}); },1500);
+    if(loading || !userId) return;
+    const t=setTimeout(()=>{ pushToSupabase(state, userId).catch(()=>{}); },1500);
     return()=>clearTimeout(t);
-  },[state,loading]);
+  },[state,loading,userId]);
 
   useEffect(()=>{ setFlash(true); const t=setTimeout(()=>setFlash(false),1400); return()=>clearTimeout(t); },[state]);
 
@@ -856,7 +857,6 @@ export default function LifeOS({ signOut, userEmail }) {
                   <button onClick={()=>setShowSettings(false)} style={{width:32,height:32,borderRadius:"50%",border:`1px solid ${dark?"rgba(255,255,255,0.09)":"rgba(44,36,22,0.12)"}`,background:dark?tk.d3:tk.cream2,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace",color:dark?tk.di:tk.ink2}}>←</button>
                   <span style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:dark?tk.di:tk.ink}}>Settings</span>
                 </div>
-                <SettingsScreen state={state} dispatch={dispatch} dark={dark}/>
 
                 {/* Account section */}
                 <div style={{background:dark?tk.d2:"#fff",borderRadius:20,padding:20,border:`1px solid ${dark?"rgba(255,255,255,0.045)":"rgba(44,36,22,0.055)"}`,boxShadow:dark?"0 2px 16px rgba(0,0,0,0.35)":"0 2px 20px rgba(44,36,22,0.07)"}}>
@@ -868,6 +868,8 @@ export default function LifeOS({ signOut, userEmail }) {
                     Sign out
                   </button>
                 </div>
+
+                <SettingsScreen state={state} dispatch={dispatch} dark={dark}/>
               </div>
             ) : (
               <Screen s={state} dp={dispatch}/>

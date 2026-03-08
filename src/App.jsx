@@ -3,7 +3,7 @@ import AuthScreen from "./AuthScreen";
 import LifeOS from "./LifeOS_preview";
 
 export default function App() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, recoveryMode, setRecoveryMode } = useAuth();
 
   // Loading — still checking session
   if (user === undefined) {
@@ -18,11 +18,16 @@ export default function App() {
     );
   }
 
+  // Password recovery — show new password form
+  if (recoveryMode && user) {
+    return <AuthScreen initialMode="newpw" onDone={() => setRecoveryMode(false)} />;
+  }
+
   // Not logged in
   if (!user) {
     return <AuthScreen />;
   }
 
   // Authenticated
-  return <LifeOS signOut={signOut} userEmail={user.email} />;
+  return <LifeOS signOut={signOut} userEmail={user.email} userId={user.id} />;
 }
