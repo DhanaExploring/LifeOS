@@ -248,7 +248,7 @@ function FloatInput({value,onChange,placeholder,style={}}) {
 }
 
 // ── HOME ──────────────────────────────────────────────────────────────────────
-function HomeScreen({s,dp}) {
+function HomeScreen({s,dp,go}) {
   const {d}=useT();
   const hl  = s.health[today]||{water:0,workout:false,sleep:0,steps:0};
   const th  = s.habitLogs[today]||{};
@@ -261,6 +261,7 @@ function HomeScreen({s,dp}) {
   const ci  = calcPhase(s.cycle?.start, s.cycle?.len);
   const ph  = ci?PHASES[ci.phase]:null;
   const mwk = Array.from({length:7}).map((_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-(6-i));const k=dt.toISOString().split("T")[0];const e=s.moods[k];return{day:dt.toLocaleDateString("en-US",{weekday:"short"}),score:e?.mood!=null?5-e.mood:null};});
+  const tile = {cursor:"pointer",transition:"transform 0.15s ease"};
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:32}}>
@@ -272,7 +273,7 @@ function HomeScreen({s,dp}) {
 
       {/* Cycle banner */}
       {ph && (
-        <div className="su pi" style={{borderRadius:20,padding:"16px 20px",background:d?ph.dark:ph.light,border:`1px solid ${ph.color}35`,display:"flex",alignItems:"center",gap:14}}>
+        <div onClick={()=>go("cycle")} className="su pi" style={{...tile,borderRadius:20,padding:"16px 20px",background:d?ph.dark:ph.light,border:`1px solid ${ph.color}35`,display:"flex",alignItems:"center",gap:14}}>
           <span style={{fontSize:30,flexShrink:0}}>{ph.emoji}</span>
           <div style={{flex:1,minWidth:0}}>
             <Mono size={10} color={ph.color} style={{letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{ph.name} Phase · Day {ci.day} of {ci.len} · {ci.nextIn}d until next period</Mono>
@@ -283,61 +284,73 @@ function HomeScreen({s,dp}) {
 
       {/* Habit ring + Mood */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Card style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",gap:10}}>
-          <Ring v={hpct}/>
-          <Lbl style={{marginBottom:2,textAlign:"center"}}>Habits done</Lbl>
-          <Mono size={11} color={tk.sage}>{done}/{s.habits.length} today</Mono>
-        </Card>
-        <Card style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",gap:8}}>
-          {mobj?<><span style={{fontSize:40}}>{mobj.e}</span><Mono size={11} color={mobj.c}>{mobj.l}</Mono><Lbl style={{marginBottom:0,textAlign:"center"}}>Today's mood</Lbl></>:<><span style={{fontSize:36,opacity:0.18}}>◡</span><Mono size={11} style={{textAlign:"center"}}>Log your mood</Mono></>}
-        </Card>
+        <div onClick={()=>go("health")} style={tile}>
+          <Card style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",gap:10}}>
+            <Ring v={hpct}/>
+            <Lbl style={{marginBottom:2,textAlign:"center"}}>Habits done</Lbl>
+            <Mono size={11} color={tk.sage}>{done}/{s.habits.length} today</Mono>
+          </Card>
+        </div>
+        <div onClick={()=>go("journal")} style={tile}>
+          <Card style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",gap:8}}>
+            {mobj?<><span style={{fontSize:40}}>{mobj.e}</span><Mono size={11} color={mobj.c}>{mobj.l}</Mono><Lbl style={{marginBottom:0,textAlign:"center"}}>Today's mood</Lbl></>:<><span style={{fontSize:36,opacity:0.18}}>◡</span><Mono size={11} style={{textAlign:"center"}}>Log your mood</Mono></>}
+          </Card>
+        </div>
       </div>
 
       {/* Quick stats */}
-      <Card>
-        <Lbl>Today at a glance</Lbl>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",textAlign:"center",gap:8}}>
-          {[{i:"💧",v:hl.water||0,l:"glasses"},{i:"🏃",v:hl.workout?"Done":"Rest",l:"workout"},{i:"😴",v:`${hl.sleep||0}h`,l:"sleep"},{i:"👟",v:`${((hl.steps||0)/1000).toFixed(1)}k`,l:"steps"}].map(it=>(
-            <div key={it.l}><div style={{fontSize:22,marginBottom:4}}>{it.i}</div><Mono size={13} color={d?tk.di:tk.ink} style={{fontWeight:400}}>{it.v}</Mono><Mono size={10} color={d?tk.di3:tk.ink3}>{it.l}</Mono></div>
-          ))}
-        </div>
-      </Card>
+      <div onClick={()=>go("health")} style={tile}>
+        <Card>
+          <Lbl>Today at a glance</Lbl>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",textAlign:"center",gap:8}}>
+            {[{i:"💧",v:hl.water||0,l:"glasses"},{i:"🏃",v:hl.workout?"Done":"Rest",l:"workout"},{i:"😴",v:`${hl.sleep||0}h`,l:"sleep"},{i:"👟",v:`${((hl.steps||0)/1000).toFixed(1)}k`,l:"steps"}].map(it=>(
+              <div key={it.l}><div style={{fontSize:22,marginBottom:4}}>{it.i}</div><Mono size={13} color={d?tk.di:tk.ink} style={{fontWeight:400}}>{it.v}</Mono><Mono size={10} color={d?tk.di3:tk.ink3}>{it.l}</Mono></div>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {/* Top goals */}
-      <Card>
-        <Lbl>Top goals</Lbl>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {s.goals.filter(g=>g.status!=="Completed").slice(0,3).map(g=>(
-            <div key={g.id}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
-                <Mono size={12} color={d?tk.di2:tk.ink2}>{g.title}</Mono>
-                <Mono size={11} color={CAT[g.cat]}>{g.prog}%</Mono>
+      <div onClick={()=>go("goals")} style={tile}>
+        <Card>
+          <Lbl>Top goals</Lbl>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {s.goals.filter(g=>g.status!=="Completed").slice(0,3).map(g=>(
+              <div key={g.id}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+                  <Mono size={12} color={d?tk.di2:tk.ink2}>{g.title}</Mono>
+                  <Mono size={11} color={CAT[g.cat]}>{g.prog}%</Mono>
+                </div>
+                <PBar v={g.prog} color={CAT[g.cat]}/>
               </div>
-              <PBar v={g.prog} color={CAT[g.cat]}/>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {/* Mood chart */}
       {mwk.filter(x=>x.score!==null).length>1 && (
-        <Card>
-          <Lbl>Mood this week</Lbl>
-          <ResponsiveContainer width="100%" height={70}>
-            <LineChart data={mwk}>
-              <XAxis dataKey="day" tick={{fontFamily:"'DM Mono',monospace",fontSize:10,fill:d?tk.di3:tk.ink3}} axisLine={false} tickLine={false}/>
-              <Tooltip contentStyle={{background:d?tk.d2:"#fff",border:"none",borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:11}}/>
-              <Line type="monotone" dataKey="score" stroke={tk.sage} strokeWidth={2.5} dot={{fill:tk.sage,r:3}} connectNulls={false}/>
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
+        <div onClick={()=>go("journal")} style={tile}>
+          <Card>
+            <Lbl>Mood this week</Lbl>
+            <ResponsiveContainer width="100%" height={70}>
+              <LineChart data={mwk}>
+                <XAxis dataKey="day" tick={{fontFamily:"'DM Mono',monospace",fontSize:10,fill:d?tk.di3:tk.ink3}} axisLine={false} tickLine={false}/>
+                <Tooltip contentStyle={{background:d?tk.d2:"#fff",border:"none",borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:11}}/>
+                <Line type="monotone" dataKey="score" stroke={tk.sage} strokeWidth={2.5} dot={{fill:tk.sage,r:3}} connectNulls={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
       )}
 
       {me?.note && (
-        <Card style={{background:d?tk.d1:tk.cream2,border:"none"}}>
-          <Lbl>Today's reflection</Lbl>
-          <p style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:15,color:d?tk.di:tk.ink2,lineHeight:1.65}}>"{me.note}"</p>
-        </Card>
+        <div onClick={()=>go("journal")} style={tile}>
+          <Card style={{background:d?tk.d1:tk.cream2,border:"none"}}>
+            <Lbl>Today's reflection</Lbl>
+            <p style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:15,color:d?tk.di:tk.ink2,lineHeight:1.65}}>"{me.note}"</p>
+          </Card>
+        </div>
       )}
     </div>
   );
@@ -624,15 +637,33 @@ function GoalsScreen({s,dp}) {
   const {d}=useT();
   const [open,setOpen]=useState(false);
   const [f,setF]=useState({title:"",cat:"Work",deadline:"",status:"Not Started",ms:""});
-  const div=d?"rgba(255,255,255,0.07)":"rgba(44,36,22,0.09)";
-  const sel = {fontFamily:"'DM Mono',monospace",fontSize:12,padding:"11px 16px",borderRadius:14,border:`1px solid ${div}`,background:d?tk.d3:tk.cream,color:d?tk.di:tk.ink,outline:"none"};
+  const [filter,setFilter]=useState("All");
+  const divC=d?"rgba(255,255,255,0.07)":"rgba(44,36,22,0.09)";
+  const sel = {fontFamily:"'DM Mono',monospace",fontSize:12,padding:"11px 16px",borderRadius:14,border:`1px solid ${divC}`,background:d?tk.d3:tk.cream,color:d?tk.di:tk.ink,outline:"none",width:"100%"};
   function add(){if(!f.title.trim())return;dp({type:"ADD_GOAL",p:{...f,id:Date.now(),prog:0,ms:f.ms.split(",").map(m=>m.trim()).filter(Boolean)}});setF({title:"",cat:"Work",deadline:"",status:"Not Started",ms:""});setOpen(false);}
+  const cats=["All","Work","Health","Finance","Content"];
+  const filtered=filter==="All"?s.goals:s.goals.filter(g=>g.cat===filter);
+  const completedCount=filtered.filter(g=>g.status==="Completed").length;
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:32}}>
       <div className="su" style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",paddingTop:8}}>
-        <div><Lbl>Work · Health · Finance · Content</Lbl><Serif size={32}>Goals</Serif><Mono size={12} style={{marginTop:4}}>{s.goals.filter(g=>g.status==="Completed").length}/{s.goals.length} completed</Mono></div>
+        <div><Lbl>Goals</Lbl><Serif size={32}>Goals</Serif><Mono size={12} style={{marginTop:4}}>{completedCount}/{filtered.length} completed</Mono></div>
         <button onClick={()=>setOpen(!open)} style={{width:40,height:40,borderRadius:"50%",background:tk.sage,border:"none",color:"#fff",fontSize:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 2px 14px ${tk.sage}50`,flexShrink:0}}>{open?"×":"+"}</button>
       </div>
+
+      {/* Category filter pills */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {cats.map(cat=>{
+          const active=filter===cat;
+          const color=cat==="All"?tk.sage:CAT[cat];
+          return (
+            <button key={cat} onClick={()=>setFilter(cat)} style={{fontFamily:"'DM Mono',monospace",fontSize:11,letterSpacing:"0.04em",padding:"8px 16px",borderRadius:20,border:`1.5px solid ${active?color:divC}`,background:active?(d?color+"25":color+"18"):"transparent",color:active?color:(d?tk.di3:tk.ink3),cursor:"pointer",transition:"all 0.2s ease",fontWeight:active?500:400}}>
+              {cat!=="All"&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:CAT[cat],marginRight:7,verticalAlign:"middle"}}/>}{cat}
+            </button>
+          );
+        })}
+      </div>
+
       {open && (
         <Card>
           <Lbl>New goal</Lbl>
@@ -648,11 +679,11 @@ function GoalsScreen({s,dp}) {
           </div>
         </Card>
       )}
-      {["Work","Health","Finance","Content"].map(cat=>{
-        const gs=s.goals.filter(g=>g.cat===cat); if(!gs.length) return null;
+      {(filter==="All"?["Work","Health","Finance","Content"]:[filter]).map(cat=>{
+        const gs=filtered.filter(g=>g.cat===cat); if(!gs.length) return null;
         return (
           <div key={cat}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><div style={{width:8,height:8,borderRadius:"50%",background:CAT[cat]}}/><Lbl style={{marginBottom:0}}>{cat}</Lbl></div>
+            <div onClick={()=>setFilter(filter===cat?"All":cat)} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer",transition:"opacity 0.15s"}}><div style={{width:10,height:10,borderRadius:"50%",background:CAT[cat],boxShadow:filter===cat?`0 0 8px ${CAT[cat]}60`:"none",transition:"box-shadow 0.2s"}}/><Lbl style={{marginBottom:0}}>{cat}</Lbl><Mono size={10} color={d?tk.di3:tk.ink3}>({gs.length})</Mono></div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {gs.map(g=>(
                 <Card key={g.id}>
@@ -669,6 +700,7 @@ function GoalsScreen({s,dp}) {
           </div>
         );
       })}
+      {filtered.length===0&&<Card style={{textAlign:"center",padding:"32px 20px"}}><Mono size={13} color={d?tk.di3:tk.ink3}>No goals in {filter}. Tap + to add one.</Mono></Card>}
     </div>
   );
 }
@@ -872,7 +904,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
                 <SettingsScreen state={state} dispatch={dispatch} dark={dark}/>
               </div>
             ) : (
-              <Screen s={state} dp={dispatch}/>
+              <Screen s={state} dp={dispatch} go={setScreen}/>
             )}
           </div>
 
