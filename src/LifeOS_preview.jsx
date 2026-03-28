@@ -139,7 +139,7 @@ const INIT = {
   habitLogs: {},
   goals: [],
   health: {},
-  finance: { income: 0, expenses: 0, target: 0, saved: 0 },
+  finance: { income: 0, budget: [], investments: [], month: new Date().toISOString().slice(0,7) },
   content: { ideas: [], planned: 0, done: 0, goal: 0 },
   moods: {},
   cycle: { start: "", len: 28, logs: {} },
@@ -155,7 +155,14 @@ function reducer(s,a){
     case "GOAL_P":  return {...s,goals:s.goals.map(g=>g.id===a.id?{...g,prog:a.v,status:a.v===100?"Completed":a.v>0?"In Progress":"Not Started"}:g)};
     case "ADD_GOAL":return {...s,goals:[...s.goals,a.p]};
     case "DEL_GOAL":return {...s,goals:s.goals.filter(g=>g.id!==a.id)};
-    case "FIN":     return {...s,finance:{...s.finance,[a.k]:a.v}};
+    case "FIN":     { const fin={...s.finance,budget:s.finance.budget||[],investments:s.finance.investments||[]}; return {...s,finance:{...fin,[a.k]:a.v}}; }
+    case "FIN_ADD_ITEM": return {...s,finance:{...s.finance,budget:[...(s.finance.budget||[]),a.p]}};
+    case "FIN_DEL_ITEM": return {...s,finance:{...s.finance,budget:(s.finance.budget||[]).filter(b=>b.id!==a.id)}};
+    case "FIN_EDIT_ITEM": return {...s,finance:{...s.finance,budget:(s.finance.budget||[]).map(b=>b.id===a.id?{...b,...a.p}:b)}};
+    case "FIN_TOGGLE_PAID": return {...s,finance:{...s.finance,budget:(s.finance.budget||[]).map(b=>b.id===a.id?{...b,paid:!b.paid}:b)}};
+    case "FIN_RESET_MONTH": return {...s,finance:{...s.finance,month:a.m,budget:(s.finance.budget||[]).map(b=>b.repeat?{...b,paid:false}:b).filter(b=>b.repeat||!b.paid)}};
+    case "FIN_ADD_INV": return {...s,finance:{...s.finance,investments:[...(s.finance.investments||[]),a.p]}};
+    case "FIN_DEL_INV": return {...s,finance:{...s.finance,investments:(s.finance.investments||[]).filter(v=>v.id!==a.id)}};
     case "CON":     return {...s,content:{...s.content,[a.k]:a.v}};
     case "ADD_IDEA":return {...s,content:{...s.content,ideas:[...s.content.ideas,a.v]}};
     case "DEL_IDEA":return {...s,content:{...s.content,ideas:s.content.ideas.filter((_,i)=>i!==a.i)}};
@@ -758,15 +765,203 @@ function JournalScreen({s,dp}) {
 // ── FINANCE ───────────────────────────────────────────────────────────────────
 function FinanceScreen({s,dp}) {
   const {d}=useT();
-  const f=s.finance;
-  const sp=pct(f.saved,f.target), ep=pct(f.expenses,f.income);
+  const raw=s.finance||{};
+  const f={income:raw.income||0,budget:raw.budget||[],investments:raw.investments||[],month:raw.month||"",resetDay:raw.resetDay||1};
+  const curMonth=new Date().toISOString().slice(0,7);
+  const [adding,setAdding]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [ef,setEf]=useState({name:"",amount:"",repeat:true,cat:"Essentials"});
+  const [invText,setInvText]=useState("");
+  const [invAmt,setInvAmt]=useState("");
+  const [showReset,setShowReset]=useState(false);
+  const [resetNotice,setResetNotice]=useState(false);
+  const divC=d?"rgba(255,255,255,0.07)":"rgba(44,36,22,0.09)";
+  const inp={fontFamily:"'DM Mono',monospace",fontSize:13,padding:"12px 16px",borderRadius:14,border:`1px solid ${divC}`,background:d?tk.d3:tk.cream,color:d?tk.di:tk.ink,outline:"none",width:"100%"};
+  const CATS=["Essentials","Subscriptions","Food","Transport","Shopping","Other"];
+  const catColors={Essentials:tk.rose,Subscriptions:tk.plum,Food:tk.gold,Transport:tk.sky,Shopping:tk.sage,Other:tk.di3};
+
+  // Auto reset if today is on or past the reset day and month hasn't been recorded yet
+  useEffect(()=>{
+    const todayDay=new Date().getDate();
+    if(f.resetDay&&todayDay>=f.resetDay&&f.month&&f.month!==curMonth){
+      dp({type:"FIN_RESET_MONTH",m:curMonth});
+      setResetNotice(true);
+    }
+  },[]);
+
+  // Reset reminder banner
+  const resetBanner=resetNotice&&(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",borderRadius:16,background:d?tk.gold+"18":tk.goldL,border:`1px solid ${d?tk.gold+"30":tk.gold+"25"}`,animation:"toastIn 0.3s ease both"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:18}}>🔄</span>
+        <div><Mono size={12} color={tk.gold} style={{fontWeight:600}}>New month started!</Mono><Mono size={11} color={d?tk.di2:tk.ink2}>Time to review your expenses</Mono></div>
+      </div>
+      <button onClick={()=>setResetNotice(false)} style={{background:"none",border:"none",color:d?tk.di3:tk.ink3,cursor:"pointer",fontSize:16,padding:4}}>✕</button>
+    </div>
+  );
+
+  const totalBudget=f.budget.reduce((a,b)=>a+b.amount,0);
+  const totalPaid=f.budget.filter(b=>b.paid).reduce((a,b)=>a+b.amount,0);
+  const totalPending=totalBudget-totalPaid;
+  const recurring=f.budget.filter(b=>b.repeat);
+  const oneTime=f.budget.filter(b=>!b.repeat);
+
+  function addItem(){
+    if(!ef.name.trim()||!ef.amount)return;
+    dp({type:"FIN_ADD_ITEM",p:{id:Date.now(),name:ef.name.trim(),amount:+ef.amount,repeat:ef.repeat,cat:ef.cat,paid:false}});
+    setEf({name:"",amount:"",repeat:true,cat:"Essentials"});setAdding(false);
+  }
+  function saveEdit(){
+    if(!ef.name.trim()||!ef.amount)return;
+    dp({type:"FIN_EDIT_ITEM",id:editing,p:{name:ef.name.trim(),amount:+ef.amount,repeat:ef.repeat,cat:ef.cat}});
+    setEditing(null);setEf({name:"",amount:"",repeat:true,cat:"Essentials"});
+  }
+  function startEdit(b){setEditing(b.id);setEf({name:b.name,amount:b.amount,repeat:b.repeat,cat:b.cat||"Essentials"});setAdding(false);}
+  function cancelEdit(){setEditing(null);setEf({name:"",amount:"",repeat:true,cat:"Essentials"});}
+
+  const renderForm=(isEdit)=>(
+    <Card>
+      <Lbl>{isEdit?"Edit expense":"New expense"}</Lbl>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <input value={ef.name} onChange={e=>setEf(p=>({...p,name:e.target.value}))} placeholder="Expense name…" style={inp}/>
+        <div style={{display:"flex",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:4,flex:1,padding:"12px 16px",borderRadius:14,border:`1px solid ${divC}`,background:d?tk.d3:tk.cream}}><Mono size={13}>₹</Mono><input type="number" value={ef.amount} onChange={e=>setEf(p=>({...p,amount:e.target.value}))} placeholder="0" style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:13,color:d?tk.di:tk.ink}}/></div>
+          <select value={ef.cat} onChange={e=>setEf(p=>({...p,cat:e.target.value}))} style={{...inp,width:"auto",flex:1}}>{CATS.map(c=><option key={c}>{c}</option>)}</select>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <Mono size={12} color={d?tk.di2:tk.ink2}>Repeats monthly</Mono>
+          </div>
+          <Toggle on={ef.repeat} set={v=>setEf(p=>({...p,repeat:v}))} color={tk.gold}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn onClick={isEdit?saveEdit:addItem} style={{flex:1,textAlign:"center"}}>{isEdit?"Save":"Add"}</Btn>
+          <Btn onClick={isEdit?cancelEdit:()=>setAdding(false)} variant="ghost" style={{flex:1,textAlign:"center"}}>Cancel</Btn>
+        </div>
+      </div>
+    </Card>
+  );
+
+  const renderItem=(b)=>(
+    <div key={b.id} className="su" style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:16,background:d?tk.d2:"#fff",border:`1px solid ${divC}`,boxShadow:d?"0 1px 8px rgba(0,0,0,0.25)":"0 1px 8px rgba(44,36,22,0.05)",opacity:b.paid?0.55:1,transition:"opacity 0.2s"}}>
+      <button onClick={()=>dp({type:"FIN_TOGGLE_PAID",id:b.id})} style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${b.paid?"transparent":(d?tk.di3:tk.cream3)}`,background:b.paid?tk.sage:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s",flexShrink:0,boxShadow:b.paid?`0 2px 8px ${tk.sage}50`:"none"}}>{b.paid&&<span style={{color:"#fff",fontSize:12}}>✓</span>}</button>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Mono size={13} color={d?tk.di:tk.ink} style={{textDecoration:b.paid?"line-through":"none"}}>{b.name}</Mono>
+          {b.repeat&&<span style={{fontFamily:"'DM Mono',monospace",fontSize:8,padding:"2px 6px",borderRadius:8,background:d?tk.d3:tk.goldL,color:tk.gold}}>↻</span>}
+        </div>
+        <Mono size={10} color={catColors[b.cat]||tk.ink3}>{b.cat||"Other"}</Mono>
+      </div>
+      <Mono size={13} color={d?tk.di2:tk.ink2} style={{flexShrink:0}}>₹{b.amount.toLocaleString()}</Mono>
+      <div style={{display:"flex",gap:4,flexShrink:0}}>
+        <button onClick={()=>startEdit(b)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:d?tk.di3:tk.ink3,padding:4}}>✎</button>
+        <button onClick={()=>dp({type:"FIN_DEL_ITEM",id:b.id})} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:d?tk.di3:tk.ink3,padding:4}}>×</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:32}}>
-      <div className="su" style={{paddingTop:8}}><Lbl>Simple & clear</Lbl><Serif size={32}>Finance</Serif></div>
-      <Card><Lbl>Savings goal</Lbl><div style={{display:"flex",alignItems:"center",gap:20}}><Ring v={sp} color={tk.gold} size={88}/><div><Serif size={26}>₹{f.saved.toLocaleString()}</Serif><Mono size={12} style={{marginTop:4}}>of ₹{f.target.toLocaleString()}</Mono><Mono size={12} color={tk.gold} style={{marginTop:8}}>₹{(f.target-f.saved).toLocaleString()} to go</Mono></div></div></Card>
-      <Card><Lbl>Monthly numbers</Lbl><div style={{display:"flex",flexDirection:"column",gap:14}}>{[{l:"Monthly income",k:"income"},{l:"Monthly expenses",k:"expenses"},{l:"Total saved so far",k:"saved"},{l:"Savings target",k:"target"}].map(it=><div key={it.k}><Mono size={11} style={{marginBottom:8,letterSpacing:"0.06em"}}>{it.l}</Mono><div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderRadius:14,background:d?tk.d3:tk.cream}}><Mono size={13}>₹</Mono><input type="number" value={f[it.k]} onChange={e=>dp({type:"FIN",k:it.k,v:+e.target.value||0})} style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:13,color:d?tk.di:tk.ink}}/></div></div>)}</div></Card>
-      <Card><Lbl>Spend rate</Lbl><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><Mono size={12}>₹{f.expenses.toLocaleString()} spent</Mono><Mono size={12} color={ep>80?tk.rose:tk.sage}>{ep}% of income</Mono></div><PBar v={ep} color={ep>80?tk.rose:tk.sage} h={6}/><Mono size={11} color={ep>80?tk.rose:tk.sage} style={{marginTop:10}}>{ep>80?"⚠ High spending this month":ep===0?"Enter your numbers above":"✓ Spending looks healthy"}</Mono></Card>
-      <Card style={{textAlign:"center",padding:"28px 20px"}}><Lbl style={{textAlign:"center"}}>Net this month</Lbl><Serif size={36} color={f.income-f.expenses>=0?tk.sage:tk.rose}>{f.income-f.expenses>=0?"+":"-"}₹{Math.abs(f.income-f.expenses).toLocaleString()}</Serif></Card>
+      <div className="su" style={{paddingTop:8}}>
+        <Lbl>Monthly budget</Lbl><Serif size={32}>Finance</Serif><Mono size={12} style={{marginTop:4}}>{new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"})}</Mono>
+      </div>
+
+      {resetBanner}
+
+      {/* Summary */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+        <Card style={{textAlign:"center",padding:"18px 10px"}}><Serif size={20} color={tk.gold}>₹{totalBudget.toLocaleString()}</Serif><Mono size={10} style={{marginTop:6}}>Total budget</Mono></Card>
+        <Card style={{textAlign:"center",padding:"18px 10px"}}><Serif size={20} color={tk.sage}>₹{totalPaid.toLocaleString()}</Serif><Mono size={10} style={{marginTop:6}}>Paid</Mono></Card>
+        <Card style={{textAlign:"center",padding:"18px 10px"}}><Serif size={20} color={tk.rose}>₹{totalPending.toLocaleString()}</Serif><Mono size={10} style={{marginTop:6}}>Pending</Mono></Card>
+      </div>
+
+      {totalBudget>0&&<Card><Lbl>Budget progress</Lbl><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><Mono size={11}>{f.budget.filter(b=>b.paid).length}/{f.budget.length} paid</Mono><Mono size={11} color={tk.sage}>{pct(totalPaid,totalBudget)}%</Mono></div><PBar v={pct(totalPaid,totalBudget)} color={tk.sage} h={6}/></Card>}
+
+      {/* Income */}
+      <Card>
+        <Lbl>Monthly income</Lbl>
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderRadius:14,background:d?tk.d3:tk.cream}}><Mono size={13}>₹</Mono><input type="number" value={f.income} onChange={e=>dp({type:"FIN",k:"income",v:+e.target.value||0})} style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:13,color:d?tk.di:tk.ink}}/></div>
+        {f.income>0&&<Mono size={11} color={totalBudget>f.income?tk.rose:tk.sage} style={{marginTop:10}}>{totalBudget>f.income?`⚠ Budget exceeds income by ₹${(totalBudget-f.income).toLocaleString()}`:`✓ ₹${(f.income-totalBudget).toLocaleString()} remaining after budget`}</Mono>}
+      </Card>
+
+      {/* Edit form (shown inline when editing) */}
+      {editing&&renderForm(true)}
+
+      {f.budget.length===0&&!adding?(
+        <div onClick={()=>{setAdding(true);setEditing(null);}} style={{border:`1.5px dashed ${divC}`,borderRadius:18,padding:"36px 24px",textAlign:"center",cursor:"pointer",transition:"all 0.15s"}}>
+          <Serif size={16} color={d?tk.di2:tk.ink2} style={{marginBottom:6}}>No expenses yet</Serif>
+          <Mono size={12} color={d?tk.di3:tk.ink3}>Tap here to start planning your month</Mono>
+        </div>
+      ):<>
+      {/* Recurring expenses */}
+      {recurring.length>0&&<div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:"'DM Mono',monospace",fontSize:10,padding:"3px 8px",borderRadius:8,background:d?tk.d3:tk.goldL,color:tk.gold}}>↻</span><Lbl style={{marginBottom:0}}>Monthly recurring</Lbl><Mono size={10} color={d?tk.di3:tk.ink3}>({recurring.length})</Mono></div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {recurring.map(renderItem)}
+        </div>
+      </div>}
+
+      {/* One-time expenses */}
+      {oneTime.length>0&&<div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}><Lbl style={{marginBottom:0}}>This month only</Lbl><Mono size={10} color={d?tk.di3:tk.ink3}>({oneTime.length})</Mono></div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {oneTime.map(renderItem)}
+        </div>
+      </div>}
+
+      {/* Add expense — inline in the section */}
+      {adding?renderForm(false):(
+        <button onClick={()=>{setAdding(true);setEditing(null);}} style={{width:"100%",padding:"14px",borderRadius:16,border:`1.5px dashed ${divC}`,background:"transparent",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:12,color:d?tk.di3:tk.ink3,transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:18,lineHeight:1}}>+</span> Add expense
+        </button>
+      )}
+      </>}
+
+      {/* Investments to consider */}
+      <Card>
+        <Lbl>Investments to consider</Lbl>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+          {f.investments.length===0&&<Mono size={12} color={d?tk.di3:tk.ink3} style={{textAlign:"center",padding:"12px 0"}}>No investments noted yet.</Mono>}
+          {f.investments.map(inv=>(
+            <div key={inv.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:14,background:d?tk.d3:tk.cream}}>
+              <span style={{color:tk.sky,fontSize:11}}>◈</span>
+              <div style={{flex:1,minWidth:0}}><Mono size={12} color={d?tk.di:tk.ink2}>{inv.name}</Mono></div>
+              {inv.amount>0&&<Mono size={11} color={tk.sky}>₹{inv.amount.toLocaleString()}</Mono>}
+              <button onClick={()=>dp({type:"FIN_DEL_INV",id:inv.id})} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:d?tk.di3:tk.ink3,lineHeight:1}}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={invText} onChange={e=>setInvText(e.target.value)} placeholder="e.g. SIP, FD, Stocks…" style={{...inp,flex:2}}/>
+          <div style={{display:"flex",alignItems:"center",gap:4,flex:1,padding:"12px 14px",borderRadius:14,border:`1px solid ${divC}`,background:d?tk.d3:tk.cream}}><Mono size={11}>₹</Mono><input type="number" value={invAmt} onChange={e=>setInvAmt(e.target.value)} placeholder="0" style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Mono',monospace",fontSize:12,color:d?tk.di:tk.ink}}/></div>
+          <button onClick={()=>{if(invText.trim()){dp({type:"FIN_ADD_INV",p:{id:Date.now(),name:invText.trim(),amount:+invAmt||0}});setInvText("");setInvAmt("");}}} style={{padding:"12px 16px",borderRadius:14,background:tk.sky,border:"none",color:"#fff",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:12,flexShrink:0}}>Add</button>
+        </div>
+      </Card>
+
+      {/* Monthly reset — collapsible */}
+      <Card>
+        <div onClick={()=>setShowReset(!showReset)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Lbl style={{marginBottom:0}}>Monthly reset</Lbl>
+            <Mono size={11} color={tk.gold}>↻ {f.resetDay}{f.resetDay===1?"st":f.resetDay===2?"nd":f.resetDay===3?"rd":"th"} of every month</Mono>
+          </div>
+          <span style={{fontSize:14,color:d?tk.di3:tk.ink3,transition:"transform 0.2s",transform:showReset?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+        </div>
+        {showReset&&<div style={{marginTop:14}}>
+          <Mono size={12} color={d?tk.di2:tk.ink2} style={{marginBottom:14,lineHeight:1.6}}>Budget resets automatically every month on this day. Recurring items get marked unpaid, completed one-time items are removed.</Mono>
+          <Mono size={11} color={d?tk.di3:tk.ink3} style={{marginBottom:8}}>Reset day of month</Mono>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {Array.from({length:31}).map((_,i)=>{
+              const day=i+1;const active=f.resetDay===day;
+              return <button key={day} onClick={()=>dp({type:"FIN",k:"resetDay",v:day})} style={{width:36,height:36,borderRadius:"50%",border:`1.5px solid ${active?tk.gold:divC}`,background:active?(d?tk.gold+"30":tk.goldL):"transparent",color:active?tk.gold:(d?tk.di3:tk.ink3),cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",fontWeight:active?600:400}}>{day}</button>;
+            })}
+          </div>
+        </div>}
+      </Card>
     </div>
   );
 }
@@ -775,15 +970,16 @@ function FinanceScreen({s,dp}) {
 function InsightsScreen({s}) {
   const {d}=useT();
   const avg=Math.round(s.goals.reduce((a,g)=>a+g.prog,0)/Math.max(1,s.goals.length));
-  const f=s.finance;
+  const raw2=s.finance||{};
+  const f={income:raw2.income||0,budget:raw2.budget||[],investments:raw2.investments||[]};
   const mwk=Array.from({length:7}).map((_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-(6-i));const k=dt.toISOString().split("T")[0];const e=s.moods[k];return{day:dt.toLocaleDateString("en-US",{weekday:"short"}),score:e?.mood!=null?5-e.mood:0};});
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:32}}>
       <div className="su" style={{paddingTop:8}}><Lbl>Monthly overview</Lbl><Serif size={32}>Insights</Serif></div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{[{l:"Goal progress",v:`${avg}%`,s:"avg across all",c:tk.sage},{l:"Savings",v:`${pct(f.saved,f.target)}%`,s:"of annual target",c:tk.gold},{l:"Goals done",v:`${s.goals.filter(g=>g.status==="Completed").length}/${s.goals.length}`,s:"completed",c:tk.sky},{l:"Content",v:`${s.content.done}/${s.content.goal}`,s:"weekly target",c:tk.plum}].map(it=><Card key={it.l} style={{textAlign:"center",padding:"22px 14px"}}><Serif size={26} color={it.c}>{it.v}</Serif><Mono size={11} color={d?tk.di:tk.ink2} style={{marginTop:8}}>{it.l}</Mono><Mono size={10} style={{marginTop:4}}>{it.s}</Mono></Card>)}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{[{l:"Goal progress",v:`${avg}%`,s:"avg across all",c:tk.sage},{l:"Budget paid",v:`${pct((f.budget||[]).filter(b=>b.paid).length,(f.budget||[]).length)}%`,s:"of planned items",c:tk.gold},{l:"Goals done",v:`${s.goals.filter(g=>g.status==="Completed").length}/${s.goals.length}`,s:"completed",c:tk.sky},{l:"Content",v:`${s.content.done}/${s.content.goal}`,s:"weekly target",c:tk.plum}].map(it=><Card key={it.l} style={{textAlign:"center",padding:"22px 14px"}}><Serif size={26} color={it.c}>{it.v}</Serif><Mono size={11} color={d?tk.di:tk.ink2} style={{marginTop:8}}>{it.l}</Mono><Mono size={10} style={{marginTop:4}}>{it.s}</Mono></Card>)}</div>
       <Card><Lbl>Goal breakdown</Lbl><div style={{display:"flex",flexDirection:"column",gap:14}}>{s.goals.map(g=><div key={g.id}><div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}><Mono size={11} color={d?tk.di:tk.ink2}>{g.title.length>32?g.title.slice(0,32)+"…":g.title}</Mono><Mono size={11} color={CAT[g.cat]}>{g.prog}%</Mono></div><PBar v={g.prog} color={CAT[g.cat]}/></div>)}</div></Card>
       <Card><Lbl>Mood this week</Lbl><ResponsiveContainer width="100%" height={90}><LineChart data={mwk}><XAxis dataKey="day" tick={{fontFamily:"'DM Mono',monospace",fontSize:10,fill:d?tk.di3:tk.ink3}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:d?tk.d2:"#fff",border:"none",borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:11}}/><Line type="monotone" dataKey="score" stroke={tk.plum} strokeWidth={2.5} dot={false}/></LineChart></ResponsiveContainer></Card>
-      <Card><Lbl>Finance snapshot</Lbl><div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13}>Monthly income</Mono><Mono size={13} color={tk.sage}>+₹{f.income.toLocaleString()}</Mono></div><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13}>Monthly expenses</Mono><Mono size={13} color={tk.rose}>-₹{f.expenses.toLocaleString()}</Mono></div><div style={{height:1,background:d?"rgba(255,255,255,0.06)":"rgba(44,36,22,0.08)",margin:"4px 0"}}/><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13} color={d?tk.di:tk.ink}>Net savings</Mono><Mono size={13} color={f.income-f.expenses>=0?tk.sage:tk.rose}>{f.income-f.expenses>=0?"+":""}₹{(f.income-f.expenses).toLocaleString()}</Mono></div></div></Card>
+      <Card><Lbl>Finance snapshot</Lbl><div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13}>Monthly income</Mono><Mono size={13} color={tk.sage}>+₹{f.income.toLocaleString()}</Mono></div><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13}>Budget planned</Mono><Mono size={13} color={tk.rose}>-₹{(f.budget||[]).reduce((a,b)=>a+b.amount,0).toLocaleString()}</Mono></div><div style={{height:1,background:d?"rgba(255,255,255,0.06)":"rgba(44,36,22,0.08)",margin:"4px 0"}}/><div style={{display:"flex",justifyContent:"space-between"}}><Mono size={13} color={d?tk.di:tk.ink}>Remaining</Mono><Mono size={13} color={f.income-(f.budget||[]).reduce((a,b)=>a+b.amount,0)>=0?tk.sage:tk.rose}>{f.income-(f.budget||[]).reduce((a,b)=>a+b.amount,0)>=0?"+":""}₹{(f.income-(f.budget||[]).reduce((a,b)=>a+b.amount,0)).toLocaleString()}</Mono></div></div></Card>
     </div>
   );
 }
