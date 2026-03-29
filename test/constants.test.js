@@ -1,0 +1,113 @@
+import { describe, it, expect } from "vitest";
+import { tk, CAT, CATL, MOODS, PHASES, calcPhase, pct, NAV, today } from "../src/constants";
+
+describe("constants", () => {
+  it("tk has core design tokens", () => {
+    expect(tk.cream).toBeDefined();
+    expect(tk.d0).toBeDefined();
+    expect(tk.sage).toBeDefined();
+    expect(tk.gold).toBeDefined();
+  });
+
+  it("CAT and CATL have matching keys", () => {
+    const keys = Object.keys(CAT);
+    expect(keys).toEqual(["Work", "Health", "Finance", "Content"]);
+    expect(Object.keys(CATL)).toEqual(keys);
+  });
+
+  it("today is a valid YYYY-MM-DD string", () => {
+    expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("MOODS has 5 entries with required fields", () => {
+    expect(MOODS).toHaveLength(5);
+    MOODS.forEach(m => {
+      expect(m).toHaveProperty("e");
+      expect(m).toHaveProperty("l");
+      expect(m).toHaveProperty("c");
+    });
+  });
+
+  it("PHASES has 4 phases with all required fields", () => {
+    const keys = Object.keys(PHASES);
+    expect(keys).toEqual(["menstrual", "follicular", "ovulatory", "luteal"]);
+    keys.forEach(k => {
+      const p = PHASES[k];
+      expect(p.name).toBeDefined();
+      expect(p.color).toBeDefined();
+      expect(p.food).toBeDefined();
+      expect(p.workout).toBeDefined();
+      expect(p.care).toBeDefined();
+      expect(p.mood).toBeDefined();
+      expect(typeof p.energy).toBe("number");
+    });
+  });
+
+  it("NAV has 7 entries with id, icon, label", () => {
+    expect(NAV).toHaveLength(7);
+    NAV.forEach(n => {
+      expect(n.id).toBeDefined();
+      expect(n.icon).toBeDefined();
+      expect(n.label).toBeDefined();
+    });
+  });
+});
+
+describe("pct()", () => {
+  it("returns 0 when total is 0", () => {
+    expect(pct(5, 0)).toBe(0);
+  });
+
+  it("calculates correct percentage", () => {
+    expect(pct(50, 100)).toBe(50);
+    expect(pct(1, 3)).toBe(33);
+  });
+
+  it("caps at 100", () => {
+    expect(pct(200, 100)).toBe(100);
+  });
+});
+
+describe("calcPhase()", () => {
+  it("returns null if no start date", () => {
+    expect(calcPhase(null)).toBeNull();
+    expect(calcPhase("")).toBeNull();
+  });
+
+  it("returns null if start is in the future", () => {
+    const future = new Date();
+    future.setFullYear(future.getFullYear() + 1);
+    expect(calcPhase(future.toISOString().split("T")[0])).toBeNull();
+  });
+
+  it("returns menstrual for day 1-5", () => {
+    // Use today as start date → day 1 → menstrual
+    const result = calcPhase(today, 28);
+    expect(result).not.toBeNull();
+    expect(result.phase).toBe("menstrual");
+    expect(result.day).toBe(1);
+  });
+
+  it("calculates correct phase for known offset", () => {
+    const start = new Date();
+    start.setDate(start.getDate() - 10); // 11 days ago → day 11 → follicular
+    const result = calcPhase(start.toISOString().split("T")[0], 28);
+    expect(result.phase).toBe("follicular");
+    expect(result.day).toBe(11);
+  });
+
+  it("wraps around for multiple cycles", () => {
+    const start = new Date();
+    start.setDate(start.getDate() - 30); // 31 days ago → day 3 of 2nd cycle (28-day)
+    const result = calcPhase(start.toISOString().split("T")[0], 28);
+    expect(result.day).toBe(3);
+    expect(result.phase).toBe("menstrual");
+  });
+
+  it("includes nextPeriod and nextIn", () => {
+    const result = calcPhase(today, 28);
+    expect(result.nextIn).toBeDefined();
+    expect(result.nextPeriod).toBeInstanceOf(Date);
+    expect(result.len).toBe(28);
+  });
+});
