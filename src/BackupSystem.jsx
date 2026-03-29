@@ -13,6 +13,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
+import { requestPermission, scheduleNotifications, cancelNotifications } from "./notifications";
 
 const STORAGE_KEY = "lifeos_data_v1";
 const BACKUP_META_KEY = "lifeos_backup_meta";
@@ -544,6 +545,89 @@ export function SettingsScreen({ state, dispatch, dark }) {
             {supabase.syncStatus !== "idle" ? "…" : "⬇ Pull from cloud"}
           </button>
         </div>
+      </div>
+
+      {/* ④ Notifications */}
+      <div style={cardStyle}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <span style={{fontSize:15}}>🔔</span>
+          <p style={{...lblStyle,marginBottom:0,flex:1}}>Daily notifications</p>
+          <span style={badgeStyle(Notification.permission === "granted")}>
+            {Notification.permission === "granted" ? "Enabled" : "Off"}
+          </span>
+        </div>
+        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Gentle reminders to start and close your day</p>
+
+        {Notification.permission === "denied" && (
+          <div style={{...infoBox("warn"),marginBottom:14}}>
+            Notifications are blocked by your browser. Re-enable them in your browser's site settings.
+          </div>
+        )}
+
+        {Notification.permission !== "granted" && Notification.permission !== "denied" && (
+          <button onClick={async () => {
+            const ok = await requestPermission();
+            if (ok) {
+              const prefs = state.notifications || { morning: true, evening: true, morningTime: "08:00", eveningTime: "21:00" };
+              scheduleNotifications(prefs);
+            }
+          }} style={{...btnFill(),width:"100%",textAlign:"center",marginBottom:14}}>
+            Enable notifications
+          </button>
+        )}
+
+        {Notification.permission === "granted" && (() => {
+          const prefs = state.notifications || { morning: true, evening: true, morningTime: "08:00", eveningTime: "21:00" };
+          return (
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {/* Morning toggle */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:16}}>☀</span>
+                  <div>
+                    <p style={monoStyle(12, d?t.di:t.ink)}>Morning check-in</p>
+                    <p style={{...monoStyle(10),color:d?t.di3:t.ink3,marginTop:2}}>Start your day with intention</p>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="time" value={prefs.morningTime || "08:00"}
+                    onChange={e => dispatch({ type: "NOTIF_PREFS", k: "morningTime", v: e.target.value })}
+                    style={{fontFamily:"'DM Mono',monospace",fontSize:11,padding:"5px 8px",borderRadius:10,
+                      border:`1px solid ${d?"rgba(255,255,255,0.1)":"rgba(44,36,22,0.12)"}`,
+                      background:d?t.d3:t.cream,color:d?t.di2:t.ink2,outline:"none"}} />
+                  <button onClick={() => {
+                    dispatch({ type: "NOTIF_PREFS", k: "morning", v: !prefs.morning });
+                  }} style={{...chipStyle(prefs.morning, t.sage),width:40,borderRadius:12,fontSize:10}}>
+                    {prefs.morning ? "ON" : "OFF"}
+                  </button>
+                </div>
+              </div>
+              <div style={divider} />
+              {/* Evening toggle */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:16}}>☾</span>
+                  <div>
+                    <p style={monoStyle(12, d?t.di:t.ink)}>Evening wind-down</p>
+                    <p style={{...monoStyle(10),color:d?t.di3:t.ink3,marginTop:2}}>Reflect and close your day</p>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="time" value={prefs.eveningTime || "21:00"}
+                    onChange={e => dispatch({ type: "NOTIF_PREFS", k: "eveningTime", v: e.target.value })}
+                    style={{fontFamily:"'DM Mono',monospace",fontSize:11,padding:"5px 8px",borderRadius:10,
+                      border:`1px solid ${d?"rgba(255,255,255,0.1)":"rgba(44,36,22,0.12)"}`,
+                      background:d?t.d3:t.cream,color:d?t.di2:t.ink2,outline:"none"}} />
+                  <button onClick={() => {
+                    dispatch({ type: "NOTIF_PREFS", k: "evening", v: !prefs.evening });
+                  }} style={{...chipStyle(prefs.evening, t.sage),width:40,borderRadius:12,fontSize:10}}>
+                    {prefs.evening ? "ON" : "OFF"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* How it all works */}

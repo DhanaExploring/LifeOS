@@ -4,6 +4,7 @@ import { tk, NAV } from "./constants";
 import { INIT, reducer } from "./reducer";
 import { ThemeCtx, Fonts } from "./ThemeContext";
 import { Mono } from "./ui";
+import { registerSW, requestPermission, scheduleNotifications } from "./notifications";
 
 // ── Screens ──────────────────────────────────────────────────────────────────
 import HomeScreen from "./screens/HomeScreen";
@@ -51,6 +52,25 @@ export default function LifeOS({ signOut, userEmail, userId }) {
 
   // Flash "saved" toast
   useEffect(() => { setFlash(true); const t = setTimeout(() => setFlash(false), 1400); return () => clearTimeout(t); }, [state]);
+
+  // Register service worker + schedule notifications
+  useEffect(() => {
+    registerSW();
+    requestPermission().then((granted) => {
+      if (granted) {
+        const prefs = state.notifications || INIT.notifications;
+        scheduleNotifications(prefs);
+      }
+    });
+  }, []);
+
+  // Re-schedule when notification preferences change
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const prefs = state.notifications || INIT.notifications;
+      scheduleNotifications(prefs);
+    }
+  }, [state.notifications]);
 
   const Screen = SCREENS[screen];
 

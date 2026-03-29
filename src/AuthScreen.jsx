@@ -31,17 +31,24 @@ export function useAuth() {
   const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    // Detect recovery tokens in URL hash (fallback for race condition where
+    // Supabase client processes the URL before onAuthStateChange is set up)
+    const hash = window.location.hash;
+    if (hash && hash.includes("type=recovery")) {
+      setRecoveryMode(true);
+    }
 
-    // Listen for auth changes
+    // Listen for auth changes — set up BEFORE getSession so we catch early events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setRecoveryMode(true);
       }
       setUser(session?.user ?? null);
+    });
+
+    // Fallback: get initial session if INITIAL_SESSION event hasn't fired yet
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(prev => prev === undefined ? (session?.user ?? null) : prev);
     });
 
     return () => subscription.unsubscribe();
@@ -50,6 +57,7 @@ export function useAuth() {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setRecoveryMode(false);
   };
 
   return { user, signOut, recoveryMode, setRecoveryMode };

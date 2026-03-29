@@ -9,6 +9,7 @@ export const INIT = {
   content: { ideas: [], planned: 0, done: 0, goal: 0 },
   moods: {},
   cycle: { start: "", len: 28, logs: {} },
+  notifications: { morning: true, evening: true, morningTime: "08:00", eveningTime: "21:00" },
 };
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
@@ -154,6 +155,9 @@ export function reducer(s, a) {
       if (!imp.health.config) imp.health.config = INIT.health.config;
       return imp;
     }
+
+    case "NOTIF_PREFS":
+      return { ...s, notifications: { ...(s.notifications || INIT.notifications), [a.k]: a.v } };
 
     case "RESET_ALL":
       return { ...INIT };
