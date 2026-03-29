@@ -107,13 +107,75 @@ export function calcPhase(startDate, len = 28) {
 // ── Utility ──────────────────────────────────────────────────────────────────
 export const pct = (v, t) => !t ? 0 : Math.min(100, Math.round(v / t * 100));
 
+// ── Health Check-in Config ───────────────────────────────────────────────────
+export const MIND_MOODS = [
+  { e: "😰", l: "Anxious" },
+  { e: "😐", l: "Meh" },
+  { e: "🙂", l: "Okay" },
+  { e: "😊", l: "Good" },
+  { e: "🤩", l: "Great" },
+];
+
+export const BODY_MOODS = [
+  { e: "😓", l: "Drained" },
+  { e: "😐", l: "Meh" },
+  { e: "🙂", l: "Okay" },
+  { e: "😊", l: "Good" },
+  { e: "💪", l: "Strong" },
+];
+
+export const H_DAILY_HABITS = [
+  "Drank enough water",
+  "Moved my body",
+  "No screens before bed",
+];
+
+export function getWeekKey(d = new Date()) {
+  const dt = new Date(d);
+  dt.setDate(dt.getDate() - dt.getDay());
+  return dt.toISOString().split("T")[0];
+}
+
+// ── Positive Affirmations ────────────────────────────────────────────────────
+export const AFFIRMATIONS = [
+  "I am worthy of love, rest and good things.",
+  "I trust myself to handle whatever comes my way.",
+  "My feelings are valid and I honour them.",
+  "I am allowed to take up space.",
+  "I choose progress over perfection.",
+  "I am doing better than I think I am.",
+  "I release what I cannot control.",
+  "My body is my home and I treat it with care.",
+  "I am growing at my own pace and that is enough.",
+  "I deserve the same kindness I give to others.",
+  "I am not behind — I am exactly where I need to be.",
+  "Small steps still move me forward.",
+  "I am capable of hard things.",
+  "Today I choose peace over worry.",
+  "I have survived every bad day so far.",
+  "My worth is not measured by my productivity.",
+  "I am allowed to outgrow old versions of myself.",
+  "I am the author of my own story.",
+  "Resting is not giving up.",
+  "I attract what I believe I deserve.",
+  "I am resilient, brave and enough.",
+  "My mistakes do not define me — they refine me.",
+  "I give myself permission to say no.",
+  "I am learning to be gentle with myself.",
+  "Every breath is a fresh start.",
+  "I choose to focus on what I can change.",
+  "I am more than my anxious thoughts.",
+  "My energy is precious and I spend it wisely.",
+  "I celebrate how far I have come.",
+  "I am becoming someone I am proud of.",
+];
+
 // ── Navigation Config ────────────────────────────────────────────────────────
 export const NAV = [
   {id:"home",    icon:"⌂", label:"Home"},
   {id:"goals",   icon:"◎", label:"Goals"},
   {id:"health",  icon:"♡", label:"Health"},
   {id:"finance", icon:"◇", label:"Finance"},
-  {id:"journal", icon:"✎", label:"Journal"},
   {id:"cycle",   icon:"◉", label:"Cycle"},
   {id:"insights",icon:"◈", label:"Insights"},
 ];

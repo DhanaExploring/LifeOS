@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithTheme } from "./helpers";
 import HomeScreen from "../src/screens/HomeScreen";
 import { INIT } from "../src/reducer";
+import { today } from "../src/constants";
 
 // Mock recharts to avoid SVG measurement issues in jsdom
 vi.mock("recharts", () => ({
@@ -18,7 +19,7 @@ const baseState = {
   habits: [{ id: 1, name: "Read", icon: "📖" }],
   habitLogs: {},
   goals: [{ id: 1, title: "Test goal", prog: 50, status: "In Progress", cat: "Work" }],
-  health: {},
+  health: { daily: {}, weekly: {}, config: { customHabits: [], hiddenDefaults: [] } },
   moods: {},
   cycle: { start: "", len: 28, logs: {} },
 };
@@ -39,16 +40,40 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Test goal")).toBeInTheDocument();
   });
 
-  it("shows 'Log your mood' when no mood logged", () => {
+  it("shows prompt to pick affirmation when none set", () => {
     renderWithTheme(<HomeScreen s={baseState} dp={() => {}} go={() => {}} />);
-    expect(screen.getByText("Log your mood")).toBeInTheDocument();
+    expect(screen.getByText(/pick today's affirmation/i)).toBeInTheDocument();
+  });
+
+  it("shows today's affirmation when set", () => {
+    const withAffirm = {
+      ...baseState,
+      health: { ...baseState.health, daily: { [today]: { mindMood: null, bodyMood: null, habits: {}, grateful: "", brainDump: "", affirmation: "I am enough." } } },
+    };
+    renderWithTheme(<HomeScreen s={withAffirm} dp={() => {}} go={() => {}} />);
+    expect(screen.getByText(/"I am enough."/)).toBeInTheDocument();
+    expect(screen.getByText("Today's affirmation")).toBeInTheDocument();
+  });
+
+  it("shows grateful prompt when nothing entered", () => {
+    renderWithTheme(<HomeScreen s={baseState} dp={() => {}} go={() => {}} />);
+    expect(screen.getByText("What are you grateful for?")).toBeInTheDocument();
+  });
+
+  it("shows grateful text when entered", () => {
+    const withGrateful = {
+      ...baseState,
+      health: { ...baseState.health, daily: { [today]: { mindMood: null, bodyMood: null, habits: {}, grateful: "my family", brainDump: "", affirmation: "" } } },
+    };
+    renderWithTheme(<HomeScreen s={withGrateful} dp={() => {}} go={() => {}} />);
+    expect(screen.getByText("my family")).toBeInTheDocument();
+    expect(screen.getByText("Grateful for")).toBeInTheDocument();
   });
 
   it("calls go() when clicking a tile", async () => {
     const go = vi.fn();
     renderWithTheme(<HomeScreen s={baseState} dp={() => {}} go={go} />);
-    // Click the "Today at a glance" card area
-    screen.getByText("Today at a glance").closest("[style]").click();
-    expect(go).toHaveBeenCalledWith("health");
+    screen.getByText("Top goals").closest("[style]").click();
+    expect(go).toHaveBeenCalledWith("goals");
   });
 });

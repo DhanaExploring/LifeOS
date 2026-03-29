@@ -1,16 +1,14 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, CAT, MOODS, PHASES, calcPhase, today, pct } from "../constants";
+import { tk, CAT, PHASES, calcPhase, today, pct } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, Ring } from "../ui";
 
 export default function HomeScreen({ s, dp, go }) {
   const { d } = useT();
-  const hl   = s.health[today] || { water: 0, workout: false, sleep: 0, steps: 0 };
+  const hd   = (s.health.daily || {})[today] || { mindMood: null, bodyMood: null, habits: {}, grateful: "", brainDump: "", affirmation: "" };
   const th   = s.habitLogs[today] || {};
   const done = Object.values(th).filter(Boolean).length;
   const hpct = s.habits.length ? pct(done, s.habits.length) : 0;
-  const me   = s.moods[today];
-  const mobj = me?.mood != null ? MOODS[me.mood] : null;
   const hr   = new Date().getHours();
   const greet = hr < 5 ? "Still up?" : hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
   const ci   = calcPhase(s.cycle?.start, s.cycle?.len);
@@ -19,8 +17,8 @@ export default function HomeScreen({ s, dp, go }) {
   const mwk = Array.from({ length: 7 }).map((_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - (6 - i));
     const k = dt.toISOString().split("T")[0];
-    const e = s.moods[k];
-    return { day: dt.toLocaleDateString("en-US", { weekday: "short" }), score: e?.mood != null ? 5 - e.mood : null };
+    const e = (s.health.daily || {})[k];
+    return { day: dt.toLocaleDateString("en-US", { weekday: "short" }), score: e?.mindMood != null ? e.mindMood + 1 : null };
   });
 
   const tile = { cursor: "pointer", transition: "transform 0.15s ease" };
@@ -31,9 +29,33 @@ export default function HomeScreen({ s, dp, go }) {
         <Mono size={11} color={d ? tk.di3 : tk.ink3} style={{ letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </Mono>
-        <Serif size={34}>{greet} <span style={{ color: tk.sage }}>✦</span></Serif>
+        <Serif size={34}>{greet} <span style={{ color: tk.sage }}>☯</span></Serif>
         <Mono size={12} style={{ marginTop: 4 }}>Here's your life at a glance.</Mono>
       </div>
+
+      {/* Today's affirmation */}
+      {hd.affirmation ? (
+        <div onClick={() => go("health")} style={tile}>
+          <Card style={{
+            textAlign: "center", padding: "24px 20px",
+            background: d
+              ? `linear-gradient(135deg, ${tk.d2}, ${tk.sage}15)`
+              : `linear-gradient(135deg, #fff, ${tk.sageL})`,
+            border: `1px solid ${d ? tk.sage + "20" : tk.sage + "30"}`,
+          }}>
+            <Lbl style={{ marginBottom: 10 }}>Today's affirmation</Lbl>
+            <Serif size={16} style={{ lineHeight: 1.5, fontStyle: "italic" }}>
+              "{hd.affirmation}"
+            </Serif>
+          </Card>
+        </div>
+      ) : (
+        <div onClick={() => go("health")} style={tile}>
+          <Card style={{ textAlign: "center", padding: "20px 16px" }}>
+            <Mono size={12} color={d ? tk.di3 : tk.ink3}>Pick today's affirmation in Health</Mono>
+          </Card>
+        </div>
+      )}
 
       {/* Cycle banner */}
       {ph && (
@@ -48,44 +70,32 @@ export default function HomeScreen({ s, dp, go }) {
         </div>
       )}
 
-      {/* Habit ring + Mood */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      {/* Habit ring + Grateful */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
         <div onClick={() => go("health")} style={tile}>
-          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 10 }}>
+          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 10, height: "100%", boxSizing: "border-box" }}>
             <Ring v={hpct} />
             <Lbl style={{ marginBottom: 2, textAlign: "center" }}>Habits done</Lbl>
             <Mono size={11} color={tk.sage}>{done}/{s.habits.length} today</Mono>
           </Card>
         </div>
-        <div onClick={() => go("journal")} style={tile}>
-          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 8 }}>
-            {mobj
-              ? <><span style={{ fontSize: 40 }}>{mobj.e}</span><Mono size={11} color={mobj.c}>{mobj.l}</Mono><Lbl style={{ marginBottom: 0, textAlign: "center" }}>Today's mood</Lbl></>
-              : <><span style={{ fontSize: 36, opacity: 0.18 }}>◡</span><Mono size={11} style={{ textAlign: "center" }}>Log your mood</Mono></>
+        <div onClick={() => go("health")} style={tile}>
+          <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 8, height: "100%", boxSizing: "border-box" }}>
+            <Lbl style={{ marginBottom: 0, textAlign: "center" }}>Grateful for</Lbl>
+            {hd.grateful?.trim()
+              ? <>
+                  <span style={{ fontSize: 28, color: tk.sage }}>❋</span>
+                  <Serif size={14} style={{ textAlign: "center", lineHeight: 1.4, fontStyle: "italic" }}>
+                    {hd.grateful.trim().length > 50 ? hd.grateful.trim().slice(0, 50) + "…" : hd.grateful.trim()}
+                  </Serif>
+                </>
+              : <>
+                  <span style={{ fontSize: 36, color: tk.sage, opacity: 0.25 }}>❋</span>
+                  <Mono size={11} style={{ textAlign: "center" }}>What are you grateful for?</Mono>
+                </>
             }
           </Card>
         </div>
-      </div>
-
-      {/* Quick stats */}
-      <div onClick={() => go("health")} style={tile}>
-        <Card>
-          <Lbl>Today at a glance</Lbl>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", textAlign: "center", gap: 8 }}>
-            {[
-              { i: "💧", v: hl.water || 0, l: "glasses" },
-              { i: "🏃", v: hl.workout ? "Done" : "Rest", l: "workout" },
-              { i: "😴", v: `${hl.sleep || 0}h`, l: "sleep" },
-              { i: "👟", v: `${((hl.steps || 0) / 1000).toFixed(1)}k`, l: "steps" },
-            ].map(it => (
-              <div key={it.l}>
-                <div style={{ fontSize: 22, marginBottom: 4 }}>{it.i}</div>
-                <Mono size={13} color={d ? tk.di : tk.ink} style={{ fontWeight: 400 }}>{it.v}</Mono>
-                <Mono size={10} color={d ? tk.di3 : tk.ink3}>{it.l}</Mono>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
 
       {/* Top goals */}
@@ -110,7 +120,7 @@ export default function HomeScreen({ s, dp, go }) {
 
       {/* Mood chart */}
       {mwk.filter(x => x.score !== null).length > 1 && (
-        <div onClick={() => go("journal")} style={tile}>
+        <div onClick={() => go("health")} style={tile}>
           <Card>
             <Lbl>Mood this week</Lbl>
             <ResponsiveContainer width="100%" height={70}>
@@ -124,11 +134,11 @@ export default function HomeScreen({ s, dp, go }) {
         </div>
       )}
 
-      {me?.note && (
-        <div onClick={() => go("journal")} style={tile}>
+      {hd.brainDump?.trim() && (
+        <div onClick={() => go("health")} style={tile}>
           <Card style={{ background: d ? tk.d1 : tk.cream2, border: "none" }}>
-            <Lbl>Today's reflection</Lbl>
-            <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: 15, color: d ? tk.di : tk.ink2, lineHeight: 1.65 }}>"{me.note}"</p>
+            <Lbl>Today's brain dump</Lbl>
+            <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: 15, color: d ? tk.di : tk.ink2, lineHeight: 1.65 }}>"{hd.brainDump.trim().length > 80 ? hd.brainDump.trim().slice(0, 80) + '…' : hd.brainDump.trim()}"</p>
           </Card>
         </div>
       )}

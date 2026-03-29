@@ -8,7 +8,7 @@ export const useT = () => useContext(ThemeCtx);
 export function Fonts() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap');
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       input[type=range] { -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; width:100%; }
       input[type=range]::-webkit-slider-runnable-track { height:4px; border-radius:2px; background:var(--track); }

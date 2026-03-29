@@ -32,14 +32,13 @@ describe("LifeOS root shell", () => {
     expect(await screen.findByText("LifeOS")).toBeInTheDocument();
   });
 
-  it("renders bottom nav with all 7 items", async () => {
+  it("renders bottom nav with all 6 items", async () => {
     render(<LifeOS signOut={() => {}} userEmail="test@test.com" userId="u1" />);
     await screen.findByText("LifeOS");
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByText("Goals")).toBeInTheDocument();
     expect(screen.getByText("Health")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
-    expect(screen.getByText("Journal")).toBeInTheDocument();
     expect(screen.getByText("Cycle")).toBeInTheDocument();
     expect(screen.getByText("Insights")).toBeInTheDocument();
   });
@@ -53,9 +52,9 @@ describe("LifeOS root shell", () => {
     await user.click(screen.getByText("Goals"));
     expect(await screen.findByText(/completed/)).toBeInTheDocument();
 
-    // Navigate to Journal
-    await user.click(screen.getByText("Journal"));
-    expect(await screen.findByText("Today's mood")).toBeInTheDocument();
+    // Navigate to Health via its unique nav icon
+    await user.click(screen.getByText("♡"));
+    expect(await screen.findByText("Mind mood trend")).toBeInTheDocument();
   });
 
   it("opens settings and shows account info", async () => {

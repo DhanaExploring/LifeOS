@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tk, CAT, CATL, MOODS, PHASES, calcPhase, pct, NAV, today } from "../src/constants";
+import { tk, CAT, CATL, MOODS, PHASES, calcPhase, pct, NAV, today, MIND_MOODS, BODY_MOODS } from "../src/constants";
 
 describe("constants", () => {
   it("tk has core design tokens", () => {
@@ -43,12 +43,28 @@ describe("constants", () => {
     });
   });
 
-  it("NAV has 7 entries with id, icon, label", () => {
-    expect(NAV).toHaveLength(7);
+  it("NAV has 6 entries with id, icon, label", () => {
+    expect(NAV).toHaveLength(6);
     NAV.forEach(n => {
       expect(n.id).toBeDefined();
       expect(n.icon).toBeDefined();
       expect(n.label).toBeDefined();
+    });
+  });
+
+  it("MIND_MOODS has 5 entries with e and l", () => {
+    expect(MIND_MOODS).toHaveLength(5);
+    MIND_MOODS.forEach(m => {
+      expect(m).toHaveProperty("e");
+      expect(m).toHaveProperty("l");
+    });
+  });
+
+  it("BODY_MOODS has 5 entries with e and l", () => {
+    expect(BODY_MOODS).toHaveLength(5);
+    BODY_MOODS.forEach(m => {
+      expect(m).toHaveProperty("e");
+      expect(m).toHaveProperty("l");
     });
   });
 });

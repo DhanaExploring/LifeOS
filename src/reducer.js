@@ -4,7 +4,7 @@ export const INIT = {
   habits: [],
   habitLogs: {},
   goals: [],
-  health: {},
+  health: { daily: {}, weekly: {}, config: { customHabits: [], hiddenDefaults: [] } },
   finance: { income: 0, budget: [], investments: [], month: new Date().toISOString().slice(0, 7) },
   content: { ideas: [], planned: 0, done: 0, goal: 0 },
   moods: {},
@@ -23,10 +23,24 @@ export function reducer(s, a) {
       return { ...s, habitLogs: l };
     }
 
-    case "HEALTH": {
-      const h = { ...s.health };
-      h[a.d] = { ...(h[a.d] || {}), [a.k]: a.v };
-      return { ...s, health: h };
+    case "H_DAILY": {
+      const daily = { ...(s.health.daily || {}) };
+      daily[a.d] = { ...(daily[a.d] || { mindMood: null, bodyMood: null, grateful: "", habits: {}, brainDump: "", affirmation: "" }), [a.k]: a.v };
+      return { ...s, health: { ...s.health, daily } };
+    }
+
+    case "H_DAILY_HAB": {
+      const daily = { ...(s.health.daily || {}) };
+      const de = { ...(daily[a.d] || { mindMood: null, bodyMood: null, grateful: "", habits: {}, brainDump: "", affirmation: "" }) };
+      const hb = { ...de.habits }; hb[a.name] = !hb[a.name]; de.habits = hb;
+      daily[a.d] = de;
+      return { ...s, health: { ...s.health, daily } };
+    }
+
+    case "H_WEEKLY": {
+      const weekly = { ...(s.health.weekly || {}) };
+      weekly[a.w] = { ...(weekly[a.w] || { pattern: "", protect: "" }), [a.k]: a.v };
+      return { ...s, health: { ...s.health, weekly } };
     }
 
     case "GOAL_P":
@@ -113,8 +127,33 @@ export function reducer(s, a) {
       return { ...s, cycle: { ...s.cycle, logs } };
     }
 
-    case "IMPORT_STATE":
-      return { ...INIT, ...a.payload, dark: s.dark };
+    case "H_ADD_CUSTOM_HAB": {
+      const cfg = { ...(s.health.config || { customHabits: [], hiddenDefaults: [] }) };
+      cfg.customHabits = [...cfg.customHabits, a.name];
+      return { ...s, health: { ...s.health, config: cfg } };
+    }
+
+    case "H_DEL_CUSTOM_HAB": {
+      const cfg = { ...(s.health.config || { customHabits: [], hiddenDefaults: [] }) };
+      cfg.customHabits = cfg.customHabits.filter((_, i) => i !== a.i);
+      return { ...s, health: { ...s.health, config: cfg } };
+    }
+
+    case "H_TOGGLE_DEFAULT": {
+      const cfg = { ...(s.health.config || { customHabits: [], hiddenDefaults: [] }) };
+      const hd = [...cfg.hiddenDefaults];
+      const idx = hd.indexOf(a.i);
+      if (idx >= 0) hd.splice(idx, 1); else hd.push(a.i);
+      cfg.hiddenDefaults = hd;
+      return { ...s, health: { ...s.health, config: cfg } };
+    }
+
+    case "IMPORT_STATE": {
+      const imp = { ...INIT, ...a.payload, dark: s.dark };
+      if (!imp.health || !imp.health.daily) imp.health = { ...INIT.health };
+      if (!imp.health.config) imp.health.config = INIT.health.config;
+      return imp;
+    }
 
     case "RESET_ALL":
       return { ...INIT };

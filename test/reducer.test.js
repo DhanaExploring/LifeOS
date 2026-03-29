@@ -36,11 +36,52 @@ describe("reducer", () => {
     expect(s.habits[0].id).toBe(2);
   });
 
-  // ── Health ──────────────────────────────────────────────────────────────
-  it("HEALTH sets a health field for a date", () => {
-    const s = reducer(INIT, { type: "HEALTH", d: "2025-03-28", k: "water", v: 8 });
-    expect(s.health["2025-03-28"].water).toBe(8);
+  // ── Health Check-in ──────────────────────────────────────────────────────
+  it("H_DAILY sets a daily health field", () => {
+    const s = reducer(INIT, { type: "H_DAILY", d: "2025-03-28", k: "mindMood", v: 3 });
+    expect(s.health.daily["2025-03-28"].mindMood).toBe(3);
   });
+
+  it("H_DAILY_HAB toggles a daily habit by name", () => {
+    const s1 = reducer(INIT, { type: "H_DAILY_HAB", d: "2025-03-28", name: "Drank enough water" });
+    expect(s1.health.daily["2025-03-28"].habits["Drank enough water"]).toBe(true);
+    const s2 = reducer(s1, { type: "H_DAILY_HAB", d: "2025-03-28", name: "Drank enough water" });
+    expect(s2.health.daily["2025-03-28"].habits["Drank enough water"]).toBe(false);
+  });
+
+  it("H_WEEKLY sets a weekly health field", () => {
+    const s = reducer(INIT, { type: "H_WEEKLY", w: "2025-03-23", k: "pattern", v: "More sleep" });
+    expect(s.health.weekly["2025-03-23"].pattern).toBe("More sleep");
+  });
+
+
+  it("IMPORT_STATE migrates old health format", () => {
+    const payload = { health: { "2025-03-28": { water: 8 } } };
+    const s = reducer(INIT, { type: "IMPORT_STATE", payload });
+    expect(s.health.daily).toEqual({});
+    expect(s.health.weekly).toEqual({});
+    expect(s.health.config).toEqual(INIT.health.config);
+  });
+
+  // ── Configurable Health Habits ──────────────────────────────────────────
+  it("H_ADD_CUSTOM_HAB adds a custom habit", () => {
+    const s = reducer(INIT, { type: "H_ADD_CUSTOM_HAB", name: "Meditate" });
+    expect(s.health.config.customHabits).toEqual(["Meditate"]);
+  });
+
+  it("H_DEL_CUSTOM_HAB removes a custom habit by index", () => {
+    const withHab = { ...INIT, health: { ...INIT.health, config: { ...INIT.health.config, customHabits: ["A", "B"] } } };
+    const s = reducer(withHab, { type: "H_DEL_CUSTOM_HAB", i: 0 });
+    expect(s.health.config.customHabits).toEqual(["B"]);
+  });
+
+  it("H_TOGGLE_DEFAULT toggles default habit visibility", () => {
+    const s1 = reducer(INIT, { type: "H_TOGGLE_DEFAULT", i: 1 });
+    expect(s1.health.config.hiddenDefaults).toEqual([1]);
+    const s2 = reducer(s1, { type: "H_TOGGLE_DEFAULT", i: 1 });
+    expect(s2.health.config.hiddenDefaults).toEqual([]);
+  });
+
 
   // ── Goals ───────────────────────────────────────────────────────────────
   it("ADD_GOAL adds a goal", () => {

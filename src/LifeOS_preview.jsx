@@ -10,7 +10,6 @@ import HomeScreen from "./screens/HomeScreen";
 import GoalsScreen from "./screens/GoalsScreen";
 import HealthScreen from "./screens/HealthScreen";
 import FinanceScreen from "./screens/FinanceScreen";
-import JournalScreen from "./screens/JournalScreen";
 import CycleScreen from "./screens/CycleScreen";
 import InsightsScreen from "./screens/InsightsScreen";
 
@@ -19,7 +18,6 @@ const SCREENS = {
   goals:   GoalsScreen,
   health:  HealthScreen,
   finance: FinanceScreen,
-  journal: JournalScreen,
   cycle:   CycleScreen,
   insights:InsightsScreen,
 };
@@ -63,7 +61,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
         <Fonts />
         <div style={{ position: "fixed", inset: 0, background: dark ? tk.d0 : tk.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
-            <span style={{ color: tk.sage, fontSize: 36, lineHeight: 1, display: "block", animation: "pulse 1.2s ease infinite" }}>✦</span>
+            <span style={{ color: tk.sage, fontSize: 36, lineHeight: 1, display: "block", animation: "pulse 1.2s ease infinite" }}>☯</span>
             <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: dark ? tk.di3 : tk.ink3, marginTop: 16 }}>Loading your data…</p>
           </div>
         </div>
@@ -85,7 +83,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
           boxShadow: "0 4px 24px rgba(0,0,0,0.28)", pointerEvents: "none",
           transition: "all 0.3s ease", opacity: flash ? 1 : 0,
           transform: `translateX(-50%) translateY(${flash ? 0 : -10}px)`,
-        }}>✦ saved</div>
+        }}>☯ saved</div>
 
         {/* Phone shell */}
         <div style={{ width: "100%", maxWidth: 430, height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
@@ -96,7 +94,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
             background: dark ? tk.d0 : tk.cream, backdropFilter: "blur(16px)", position: "sticky", top: 0, zIndex: 30,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: tk.sage, fontSize: 19, lineHeight: 1 }}>✦</span>
+              <span style={{ color: tk.sage, fontSize: 19, lineHeight: 1 }}>☯</span>
               <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: dark ? tk.di : tk.ink2 }}>LifeOS</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
