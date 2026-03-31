@@ -297,6 +297,27 @@ export async function pullFromSupabase(userId) {
   return data.data;
 }
 
+/**
+ * Subscribe to real-time changes on the lifeos_data row for this user.
+ * Calls `onData(cloudData)` whenever a remote write arrives.
+ * Returns an unsubscribe function.
+ */
+export function subscribeRealtime(userId, onData) {
+  if (!userId) return () => {};
+  const channel = supabase
+    .channel(`lifeos_sync_${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "lifeos_data", filter: `id=eq.${userId}` },
+      (payload) => {
+        const cloudData = payload.new?.data;
+        if (cloudData) onData(cloudData);
+      }
+    )
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
 export function useSupabaseSync(appState, dispatch, userId) {
   const [syncStatus, setSyncStatus] = useState("idle");
   const [lastSynced, setLastSynced] = useState(getMeta().lastSupabaseSync || null);

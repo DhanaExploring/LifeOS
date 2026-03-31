@@ -7,6 +7,7 @@ vi.mock("../src/BackupSystem", () => ({
   SettingsScreen: () => <div data-testid="settings-screen">Settings</div>,
   pullFromSupabase: vi.fn(() => Promise.resolve({ profile: { name: "Test", gender: "female" } })),
   pushToSupabase: vi.fn(() => Promise.resolve()),
+  subscribeRealtime: vi.fn(() => vi.fn()),
 }));
 
 // Mock recharts globally

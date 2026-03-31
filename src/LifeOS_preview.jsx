@@ -1,5 +1,5 @@
 import { useState, useReducer, useEffect, useRef } from "react";
-import { SettingsScreen, pullFromSupabase, pushToSupabase } from "./BackupSystem";
+import { SettingsScreen, pullFromSupabase, pushToSupabase, subscribeRealtime } from "./BackupSystem";
 import { tk, NAV } from "./constants";
 import { INIT, reducer } from "./reducer";
 import { ThemeCtx, Fonts } from "./ThemeContext";
@@ -86,11 +86,11 @@ export default function LifeOS({ signOut, userEmail, userId }) {
       try { localStorage.setItem(LS_KEY, JSON.stringify(withTs)); } catch {}
       pushToSupabase(withTs, userId)
         .catch((err) => console.error("[LifeOS] sync failed:", err));
-    }, 1500);
+    }, 800);
     return () => clearTimeout(t);
   }, [state, loading, userId]);
 
-  // ── 4. Flush to Supabase when tab hidden / page unloads (extra safety)
+  // ── 4. Flush to Supabase when tab hidden / pull fresh data when tab visible
   useEffect(() => {
     if (!userId) return;
     function flushNow() {
@@ -98,8 +98,22 @@ export default function LifeOS({ signOut, userEmail, userId }) {
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
       pushToSupabase(s, userId).catch(() => {});
     }
+    function pullIfNewer() {
+      pullFromSupabase(userId)
+        .then(cloudData => {
+          if (!cloudData) return;
+          const cloudTime = cloudData._updated_at || 0;
+          const localTime = latestState.current._updated_at || 0;
+          if (cloudTime > localTime) {
+            dispatch({ type: "IMPORT_STATE", payload: cloudData });
+            try { localStorage.setItem(LS_KEY, JSON.stringify(cloudData)); } catch {}
+          }
+        })
+        .catch(() => {});
+    }
     function handleVisibility() {
       if (document.visibilityState === "hidden") flushNow();
+      else if (document.visibilityState === "visible") pullIfNewer();
     }
     window.addEventListener("beforeunload", () => {
       const s = { ...latestState.current, _updated_at: Date.now() };
@@ -109,6 +123,21 @@ export default function LifeOS({ signOut, userEmail, userId }) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
+  }, [userId]);
+
+  // ── 5. Supabase Realtime — instant sync when another device writes
+  useEffect(() => {
+    if (!userId) return;
+    const unsub = subscribeRealtime(userId, (cloudData) => {
+      if (!cloudData) return;
+      const cloudTime = cloudData._updated_at || 0;
+      const localTime = latestState.current._updated_at || 0;
+      if (cloudTime > localTime) {
+        dispatch({ type: "IMPORT_STATE", payload: cloudData });
+        try { localStorage.setItem(LS_KEY, JSON.stringify(cloudData)); } catch {}
+      }
+    });
+    return unsub;
   }, [userId]);
 
   // Flash "saved" toast
