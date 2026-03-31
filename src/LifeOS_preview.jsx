@@ -35,23 +35,81 @@ export default function LifeOS({ signOut, userEmail, userId }) {
   const [loading, setLoading] = useState(true);
   const dark = state.dark;
   const initialLoad = useRef(true);
+  const latestState = useRef(state);
+  latestState.current = state;
 
-  // Pull from Supabase on first load
+  const LS_KEY = "lifeos_state";
+
+  // ── 1. Save every state change to localStorage immediately (zero-delay safety net)
   useEffect(() => {
-    if (!userId) return;
+    if (initialLoad.current) return; // don't overwrite before first load completes
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }, [state]);
+
+  // ── 2. Load on mount: localStorage first (instant), then Supabase (merge newer)
+  useEffect(() => {
+    // Immediately restore from localStorage so the UI is never empty
+    let localState = null;
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) localState = JSON.parse(raw);
+    } catch {}
+    if (localState) dispatch({ type: "IMPORT_STATE", payload: localState });
+
+    if (!userId) { setLoading(false); return; }
+
+    // Then pull from Supabase and take whichever is newer
     pullFromSupabase(userId)
-      .then(data => { if (data) dispatch({ type: "IMPORT_STATE", payload: data }); })
+      .then(cloudData => {
+        if (!cloudData) return;
+        // Compare updated_at timestamps if both exist; default to cloud
+        const cloudTime = cloudData._updated_at || 0;
+        const localTime = localState?._updated_at || 0;
+        if (!localState || cloudTime >= localTime) {
+          dispatch({ type: "IMPORT_STATE", payload: cloudData });
+        }
+        // If local is newer, it's already loaded — just push it to cloud
+        if (localState && localTime > cloudTime) {
+          pushToSupabase(localState, userId).catch(() => {});
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [userId]);
 
-  // Auto-push to Supabase on state changes (debounced, skip initial load)
+  // ── 3. Debounced Supabase push (cloud sync, every state change)
   useEffect(() => {
     if (initialLoad.current) { initialLoad.current = false; return; }
     if (loading || !userId) return;
-    const t = setTimeout(() => { pushToSupabase(state, userId).catch(() => {}); }, 1500);
+    const t = setTimeout(() => {
+      const withTs = { ...state, _updated_at: Date.now() };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(withTs)); } catch {}
+      pushToSupabase(withTs, userId)
+        .catch((err) => console.error("[LifeOS] sync failed:", err));
+    }, 1500);
     return () => clearTimeout(t);
   }, [state, loading, userId]);
+
+  // ── 4. Flush to Supabase when tab hidden / page unloads (extra safety)
+  useEffect(() => {
+    if (!userId) return;
+    function flushNow() {
+      const s = { ...latestState.current, _updated_at: Date.now() };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
+      pushToSupabase(s, userId).catch(() => {});
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "hidden") flushNow();
+    }
+    window.addEventListener("beforeunload", () => {
+      const s = { ...latestState.current, _updated_at: Date.now() };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
+    });
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [userId]);
 
   // Flash "saved" toast
   useEffect(() => { setFlash(true); const t = setTimeout(() => setFlash(false), 1400); return () => clearTimeout(t); }, [state]);
