@@ -16,6 +16,19 @@ export default function WorkScreen({ s, dp }) {
   const todayTodos = work.dailyTodos.filter(t => t.date === today);
   const otherTodos = work.dailyTodos.filter(t => t.date !== today && !t.done);
 
+  // Auto-reset: clear done tasks from previous days each morning
+  useEffect(() => {
+    if (work.lastResetDate !== today) {
+      dp({ type: "WORK_DAILY_RESET", today });
+    }
+    // Weekly reset: clear weekly target on Monday
+    const dayOfWeek = new Date().getDay();
+    const weekKey = `${new Date().getFullYear()}-W${Math.ceil((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000)}`;
+    if (dayOfWeek === 1 && work.lastWeeklyReset !== weekKey) {
+      dp({ type: "WORK_WEEKLY_RESET", week: weekKey });
+    }
+  }, []);
+
   function addTodo() {
     if (!todoText.trim()) return;
     dp({ type: "WORK_ADD_TODO", p: { id: Date.now(), text: todoText.trim(), done: false, date: today } });

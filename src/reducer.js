@@ -186,6 +186,16 @@ export function reducer(s, a) {
     case "WORK_DEL_REMINDER":
       return { ...s, work: { ...(s.work || INIT.work), reminders: (s.work || INIT.work).reminders.filter(r => r.id !== a.id) } };
 
+    case "WORK_DAILY_RESET": {
+      const w = s.work || INIT.work;
+      // Remove done tasks from previous days, keep today's and undone carry-overs
+      const cleaned = w.dailyTodos.filter(t => t.date === a.today || !t.done);
+      return { ...s, work: { ...w, dailyTodos: cleaned, lastResetDate: a.today } };
+    }
+
+    case "WORK_WEEKLY_RESET":
+      return { ...s, work: { ...(s.work || INIT.work), monthlyTarget: "", lastWeeklyReset: a.week } };
+
     case "BREAKS":
       return { ...s, breaks: { ...(s.breaks || INIT.breaks), ...a.p } };
 

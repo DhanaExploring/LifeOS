@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, CAT, pct } from "../constants";
+import { tk, CAT, pct, today } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, PBar } from "../ui";
 
@@ -8,6 +8,18 @@ export default function InsightsScreen({ s }) {
   const avg = Math.round(s.goals.reduce((a, g) => a + g.prog, 0) / Math.max(1, s.goals.length));
   const raw = s.finance || {};
   const f = { income: raw.income || 0, budget: raw.budget || [], investments: raw.investments || [] };
+  const work = s.work || { enabled: false, monthlyTarget: "", dailyTodos: [] };
+  const workEnabled = work.enabled !== false;
+  const todayTasks = (work.dailyTodos || []).filter(t => t.date === today);
+  const todayDone = todayTasks.filter(t => t.done).length;
+  const allTasks = work.dailyTodos || [];
+  const weekTasks = allTasks.filter(t => {
+    const d2 = new Date(t.date + "T00:00:00");
+    const now = new Date();
+    const diff = (now - d2) / 86400000;
+    return diff >= 0 && diff < 7;
+  });
+  const weekDone = weekTasks.filter(t => t.done).length;
 
   const mwk = Array.from({ length: 7 }).map((_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - (6 - i));
@@ -66,6 +78,35 @@ export default function InsightsScreen({ s }) {
           </LineChart>
         </ResponsiveContainer>
       </Card>
+
+      {/* Work snapshot */}
+      {workEnabled && (
+        <Card>
+          <Lbl>Work snapshot</Lbl>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <div style={{ textAlign: "center", padding: "14px 8px", borderRadius: 14, background: d ? tk.d3 : tk.cream2 }}>
+              <Serif size={24} color={tk.sage}>{todayDone}/{todayTasks.length}</Serif>
+              <Mono size={10} style={{ marginTop: 6 }}>Today's tasks</Mono>
+            </div>
+            <div style={{ textAlign: "center", padding: "14px 8px", borderRadius: 14, background: d ? tk.d3 : tk.cream2 }}>
+              <Serif size={24} color={tk.sky}>{weekDone}/{weekTasks.length}</Serif>
+              <Mono size={10} style={{ marginTop: 6 }}>This week</Mono>
+            </div>
+          </div>
+          {work.monthlyTarget?.trim() && (
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: d ? tk.d3 : tk.cream2 }}>
+              <Mono size={10} color={tk.gold} style={{ marginBottom: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Weekly focus</Mono>
+              <Mono size={12} color={d ? tk.di2 : tk.ink2}>{work.monthlyTarget.trim()}</Mono>
+            </div>
+          )}
+          {todayTasks.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <PBar v={pct(todayDone, todayTasks.length)} color={tk.sage} />
+              <Mono size={10} style={{ marginTop: 6, textAlign: "center" }}>{pct(todayDone, todayTasks.length)}% of today's tasks done</Mono>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Finance snapshot */}
       <Card>

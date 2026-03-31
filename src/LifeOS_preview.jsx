@@ -218,11 +218,11 @@ export default function LifeOS({ signOut, userEmail, userId }) {
               {visibleNav.map(n => {
                 const on = screen === n.id;
                 return (
-                  <button key={n.id} onClick={() => setScreen(n.id)} style={{
+                  <button key={n.id} onClick={() => { setScreen(n.id); setShowSettings(false); }} style={{
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                     padding: "5px 6px", borderRadius: 12, border: "none", cursor: "pointer",
                     background: on ? (dark ? "rgba(122,158,126,0.13)" : "rgba(122,158,126,0.1)") : "transparent",
-                    opacity: on ? 1 : 0.28, transition: "all 0.2s ease", minWidth: 38,
+                    opacity: on ? 1 : 0.55, transition: "all 0.2s ease", minWidth: 38,
                   }}>
                     <span style={{ fontSize: 16, lineHeight: 1, color: on ? tk.sage : (dark ? tk.di : tk.ink) }}>{n.icon}</span>
                     <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 8, letterSpacing: "0.04em", color: on ? tk.sage : (dark ? tk.di3 : tk.ink3) }}>{n.label}</span>
