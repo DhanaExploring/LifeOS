@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 // Mock BackupSystem before importing LifeOS
 vi.mock("../src/BackupSystem", () => ({
   SettingsScreen: () => <div data-testid="settings-screen">Settings</div>,
-  pullFromSupabase: vi.fn(() => Promise.resolve(null)),
+  pullFromSupabase: vi.fn(() => Promise.resolve({ profile: { name: "Test", gender: "female" } })),
   pushToSupabase: vi.fn(() => Promise.resolve()),
 }));
 
@@ -32,13 +32,14 @@ describe("LifeOS root shell", () => {
     expect(await screen.findByText("LifeOS")).toBeInTheDocument();
   });
 
-  it("renders bottom nav with all 6 items", async () => {
+  it("renders bottom nav with all visible items", async () => {
     render(<LifeOS signOut={() => {}} userEmail="test@test.com" userId="u1" />);
     await screen.findByText("LifeOS");
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByText("Goals")).toBeInTheDocument();
     expect(screen.getByText("Health")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
+    expect(screen.getByText("Work")).toBeInTheDocument();
     expect(screen.getByText("Cycle")).toBeInTheDocument();
     expect(screen.getByText("Insights")).toBeInTheDocument();
   });
@@ -54,7 +55,9 @@ describe("LifeOS root shell", () => {
 
     // Navigate to Health via its unique nav icon
     await user.click(screen.getByText("♡"));
-    expect(await screen.findByText("Mind mood trend")).toBeInTheDocument();
+    // Health screen always shows Daily and Weekly tabs
+    expect(await screen.findByText("Daily")).toBeInTheDocument();
+    expect(screen.getByText("Weekly")).toBeInTheDocument();
   });
 
   it("opens settings and shows account info", async () => {

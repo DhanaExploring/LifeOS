@@ -76,4 +76,36 @@ describe("HomeScreen", () => {
     screen.getByText("Top goals").closest("[style]").click();
     expect(go).toHaveBeenCalledWith("goals");
   });
+
+  // ── Cycle visibility based on gender ──────────────────────────────────────
+  it("hides cycle banner when gender is male", () => {
+    const maleState = { ...baseState, profile: { name: "John", gender: "male" }, cycle: { start: today, len: 28, logs: {} } };
+    const { container } = renderWithTheme(<HomeScreen s={maleState} dp={() => {}} go={() => {}} />);
+    expect(container.textContent).not.toMatch(/Phase/i);
+    expect(container.textContent).not.toMatch(/until next period/i);
+  });
+
+  it("hides cycle banner when gender is other", () => {
+    const otherState = { ...baseState, profile: { name: "Alex", gender: "other" }, cycle: { start: today, len: 28, logs: {} } };
+    const { container } = renderWithTheme(<HomeScreen s={otherState} dp={() => {}} go={() => {}} />);
+    expect(container.textContent).not.toMatch(/Phase/i);
+    expect(container.textContent).not.toMatch(/until next period/i);
+  });
+
+  it("shows cycle banner when gender is female and cycle is set", () => {
+    // Use a start date 2 days ago so calcPhase reliably returns menstrual phase
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const startDate = twoDaysAgo.toISOString().split("T")[0];
+    const femaleState = { ...baseState, profile: { name: "Sarah", gender: "female" }, cycle: { start: startDate, len: 28, logs: {} } };
+    const { container } = renderWithTheme(<HomeScreen s={femaleState} dp={() => {}} go={() => {}} />);
+    // Banner shows phase name
+    expect(container.textContent).toMatch(/Menstrual Phase/);
+  });
+
+  it("shows username in greeting when profile is set", () => {
+    const withName = { ...baseState, profile: { name: "Dhana", gender: "male" } };
+    renderWithTheme(<HomeScreen s={withName} dp={() => {}} go={() => {}} />);
+    expect(screen.getByText(/Dhana/)).toBeInTheDocument();
+  });
 });

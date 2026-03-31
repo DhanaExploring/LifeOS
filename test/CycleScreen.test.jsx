@@ -9,12 +9,13 @@ import { today } from "../src/constants";
 const setupState = { ...INIT, cycle: { start: "", len: 28, logs: {} } };
 
 const activeState = (() => {
-  // Set start 10 days ago → follicular phase
+  // Set start 10 days ago → follicular phase, day 11
   const start = new Date();
   start.setDate(start.getDate() - 10);
+  const dateStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
   return {
     ...INIT,
-    cycle: { start: start.toISOString().split("T")[0], len: 28, logs: {} },
+    cycle: { start: dateStr, len: 28, logs: {} },
   };
 })();
 

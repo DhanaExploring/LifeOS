@@ -235,4 +235,103 @@ describe("reducer", () => {
     expect(() => reducer(state, { type: "FIN_ADD_INV", p: { id: 1 } })).not.toThrow();
     expect(() => reducer(state, { type: "FIN_DEL_INV", id: 1 })).not.toThrow();
   });
+
+  // ── Profile ─────────────────────────────────────────────────────────────
+  it("INIT includes profile with empty name and gender", () => {
+    expect(INIT.profile).toEqual({ name: "", gender: "" });
+  });
+
+  it("PROFILE sets profile fields", () => {
+    const s = reducer(INIT, { type: "PROFILE", p: { name: "Dhana", gender: "female" } });
+    expect(s.profile.name).toBe("Dhana");
+    expect(s.profile.gender).toBe("female");
+  });
+
+  it("PROFILE merges partial updates", () => {
+    const withProfile = { ...INIT, profile: { name: "Dhana", gender: "female" } };
+    const s = reducer(withProfile, { type: "PROFILE", p: { name: "Dhana L" } });
+    expect(s.profile.name).toBe("Dhana L");
+    expect(s.profile.gender).toBe("female");
+  });
+
+  // ── Work ────────────────────────────────────────────────────────────────
+  it("INIT includes work with enabled=true", () => {
+    expect(INIT.work.enabled).toBe(true);
+    expect(INIT.work.dailyTodos).toEqual([]);
+    expect(INIT.work.reminders).toEqual([]);
+    expect(INIT.work.monthlyTarget).toBe("");
+  });
+
+  it("WORK_TOGGLE toggles work enabled", () => {
+    const s = reducer(INIT, { type: "WORK_TOGGLE" });
+    expect(s.work.enabled).toBe(false);
+    const s2 = reducer(s, { type: "WORK_TOGGLE" });
+    expect(s2.work.enabled).toBe(true);
+  });
+
+  it("WORK_TARGET sets monthly target", () => {
+    const s = reducer(INIT, { type: "WORK_TARGET", v: "Ship v2.0" });
+    expect(s.work.monthlyTarget).toBe("Ship v2.0");
+  });
+
+  it("WORK_ADD_TODO adds a todo", () => {
+    const todo = { id: 1, text: "Review PR", done: false, date: "2026-03-30" };
+    const s = reducer(INIT, { type: "WORK_ADD_TODO", p: todo });
+    expect(s.work.dailyTodos).toHaveLength(1);
+    expect(s.work.dailyTodos[0].text).toBe("Review PR");
+  });
+
+  it("WORK_TOGGLE_TODO toggles a todo's done state", () => {
+    const withTodo = { ...INIT, work: { ...INIT.work, dailyTodos: [{ id: 1, text: "Test", done: false }] } };
+    const s = reducer(withTodo, { type: "WORK_TOGGLE_TODO", id: 1 });
+    expect(s.work.dailyTodos[0].done).toBe(true);
+    const s2 = reducer(s, { type: "WORK_TOGGLE_TODO", id: 1 });
+    expect(s2.work.dailyTodos[0].done).toBe(false);
+  });
+
+  it("WORK_DEL_TODO removes a todo", () => {
+    const withTodos = { ...INIT, work: { ...INIT.work, dailyTodos: [{ id: 1 }, { id: 2 }] } };
+    const s = reducer(withTodos, { type: "WORK_DEL_TODO", id: 1 });
+    expect(s.work.dailyTodos).toHaveLength(1);
+    expect(s.work.dailyTodos[0].id).toBe(2);
+  });
+
+  it("WORK_ADD_REMINDER adds a reminder", () => {
+    const s = reducer(INIT, { type: "WORK_ADD_REMINDER", p: { id: 1, text: "Call client" } });
+    expect(s.work.reminders).toHaveLength(1);
+    expect(s.work.reminders[0].text).toBe("Call client");
+  });
+
+  it("WORK_DEL_REMINDER removes a reminder", () => {
+    const withReminders = { ...INIT, work: { ...INIT.work, reminders: [{ id: 1 }, { id: 2 }] } };
+    const s = reducer(withReminders, { type: "WORK_DEL_REMINDER", id: 1 });
+    expect(s.work.reminders).toHaveLength(1);
+    expect(s.work.reminders[0].id).toBe(2);
+  });
+
+  // ── Breaks ──────────────────────────────────────────────────────────────
+  it("INIT includes breaks with enabled=false", () => {
+    expect(INIT.breaks.enabled).toBe(false);
+    expect(INIT.breaks.intervalMin).toBe(60);
+  });
+
+  it("BREAKS updates break settings", () => {
+    const s = reducer(INIT, { type: "BREAKS", p: { enabled: true } });
+    expect(s.breaks.enabled).toBe(true);
+    expect(s.breaks.intervalMin).toBe(60); // unchanged
+  });
+
+  it("BREAKS can set interval", () => {
+    const s = reducer(INIT, { type: "BREAKS", p: { intervalMin: 30 } });
+    expect(s.breaks.intervalMin).toBe(30);
+  });
+
+  // ── IMPORT_STATE handles new fields ─────────────────────────────────────
+  it("IMPORT_STATE initialises missing profile, work, breaks", () => {
+    const payload = { goals: [{ id: 1 }] };
+    const s = reducer(INIT, { type: "IMPORT_STATE", payload });
+    expect(s.profile).toEqual(INIT.profile);
+    expect(s.work).toEqual(INIT.work);
+    expect(s.breaks).toEqual(INIT.breaks);
+  });
 });

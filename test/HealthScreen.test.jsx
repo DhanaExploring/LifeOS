@@ -19,9 +19,12 @@ const state = {
 
 const emptyState = { ...INIT };
 
-// Today is Sunday → default tab is "weekly". Helper to switch to daily.
+// Helpers to switch tabs explicitly
 async function goDaily(user) {
   await user.click(screen.getByText("Daily"));
+}
+async function goWeekly(user) {
+  await user.click(screen.getByText("Weekly"));
 }
 
 // ── Tab Toggle ──────────────────────────────────────────────────────────────
@@ -33,8 +36,11 @@ describe("HealthScreen – Tabs", () => {
   });
 
   it("defaults to Weekly tab on Sundays", () => {
+    const realGetDay = Date.prototype.getDay;
+    Date.prototype.getDay = () => 0; // Sunday
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
     expect(screen.getByText("Weekly review")).toBeInTheDocument();
+    Date.prototype.getDay = realGetDay;
   });
 
   it("shows 'Daily check-in' header after switching to Daily", async () => {
@@ -256,41 +262,55 @@ describe("HealthScreen – Daily Brain Dump", () => {
 
 // ── Weekly View ─────────────────────────────────────────────────────────────
 describe("HealthScreen – Weekly View", () => {
-  it("shows mood trend sections", () => {
+  it("shows mood trend sections", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getByText("Mind mood trend")).toBeInTheDocument();
     expect(screen.getByText("Body mood trend")).toBeInTheDocument();
   });
 
-  it("shows habit consistency section", () => {
+  it("shows habit consistency section", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getByText("Habit consistency")).toBeInTheDocument();
   });
 
-  it("shows brain dump snippets section", () => {
+  it("shows brain dump snippets section", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getByText("Brain dump snippets")).toBeInTheDocument();
   });
 
-  it("shows day labels Mon–Sun in mood trends", () => {
+  it("shows day labels Mon–Sun in mood trends", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getAllByText("Mon")).toHaveLength(2);
     expect(screen.getAllByText("Sun")).toHaveLength(2);
   });
 
-  it("shows '·' placeholder for days without mood data", () => {
+  it("shows '·' placeholder for days without mood data", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     const dots = screen.getAllByText("·");
     expect(dots.length).toBe(14);
   });
 
-  it("shows 'No entries this week' when no brain dumps", () => {
+  it("shows 'No entries this week' when no brain dumps", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getByText("No entries this week")).toBeInTheDocument();
   });
 
-  it("shows weekly reflection textareas", () => {
+  it("shows weekly reflection textareas", async () => {
+    const user = userEvent.setup();
     renderWithTheme(<HealthScreen s={emptyState} dp={() => {}} />);
+    await goWeekly(user);
     expect(screen.getByPlaceholderText("I noticed…")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("I want to protect…")).toBeInTheDocument();
   });
@@ -299,6 +319,7 @@ describe("HealthScreen – Weekly View", () => {
     const user = userEvent.setup();
     const dp = vi.fn();
     renderWithTheme(<HealthScreen s={emptyState} dp={dp} />);
+    await goWeekly(user);
     const ta = screen.getByPlaceholderText("I noticed…");
     await user.type(ta, "stress pattern");
     await user.tab();
@@ -309,6 +330,7 @@ describe("HealthScreen – Weekly View", () => {
     const user = userEvent.setup();
     const dp = vi.fn();
     renderWithTheme(<HealthScreen s={emptyState} dp={dp} />);
+    await goWeekly(user);
     const ta = screen.getByPlaceholderText("I want to protect…");
     await user.type(ta, "my sleep schedule");
     await user.tab();

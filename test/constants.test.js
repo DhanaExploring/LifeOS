@@ -43,13 +43,17 @@ describe("constants", () => {
     });
   });
 
-  it("NAV has 6 entries with id, icon, label", () => {
-    expect(NAV).toHaveLength(6);
+  it("NAV has 7 entries with id, icon, label", () => {
+    expect(NAV).toHaveLength(7);
     NAV.forEach(n => {
       expect(n.id).toBeDefined();
       expect(n.icon).toBeDefined();
       expect(n.label).toBeDefined();
     });
+  });
+
+  it("NAV includes work tab", () => {
+    expect(NAV.find(n => n.id === "work")).toBeDefined();
   });
 
   it("MIND_MOODS has 5 entries with e and l", () => {
@@ -84,6 +88,11 @@ describe("pct()", () => {
   });
 });
 
+// Helper: get a local date string YYYY-MM-DD (matching how calcPhase works)
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 describe("calcPhase()", () => {
   it("returns null if no start date", () => {
     expect(calcPhase(null)).toBeNull();
@@ -93,12 +102,12 @@ describe("calcPhase()", () => {
   it("returns null if start is in the future", () => {
     const future = new Date();
     future.setFullYear(future.getFullYear() + 1);
-    expect(calcPhase(future.toISOString().split("T")[0])).toBeNull();
+    expect(calcPhase(localDateStr(future))).toBeNull();
   });
 
-  it("returns menstrual for day 1-5", () => {
-    // Use today as start date → day 1 → menstrual
-    const result = calcPhase(today, 28);
+  it("returns menstrual for day 1 (today as start)", () => {
+    const todayLocal = localDateStr();
+    const result = calcPhase(todayLocal, 28);
     expect(result).not.toBeNull();
     expect(result.phase).toBe("menstrual");
     expect(result.day).toBe(1);
@@ -106,22 +115,24 @@ describe("calcPhase()", () => {
 
   it("calculates correct phase for known offset", () => {
     const start = new Date();
-    start.setDate(start.getDate() - 10); // 11 days ago → day 11 → follicular
-    const result = calcPhase(start.toISOString().split("T")[0], 28);
+    start.setDate(start.getDate() - 10); // 10 days ago → diff=10, day=11 → follicular
+    const result = calcPhase(localDateStr(start), 28);
     expect(result.phase).toBe("follicular");
     expect(result.day).toBe(11);
   });
 
   it("wraps around for multiple cycles", () => {
     const start = new Date();
-    start.setDate(start.getDate() - 30); // 31 days ago → day 3 of 2nd cycle (28-day)
-    const result = calcPhase(start.toISOString().split("T")[0], 28);
+    start.setDate(start.getDate() - 30); // 30 days ago → diff=30, day=(30%28)+1=3 → menstrual
+    const result = calcPhase(localDateStr(start), 28);
     expect(result.day).toBe(3);
     expect(result.phase).toBe("menstrual");
   });
 
   it("includes nextPeriod and nextIn", () => {
-    const result = calcPhase(today, 28);
+    const todayLocal = localDateStr();
+    const result = calcPhase(todayLocal, 28);
+    expect(result).not.toBeNull();
     expect(result.nextIn).toBeDefined();
     expect(result.nextPeriod).toBeInstanceOf(Date);
     expect(result.len).toBe(28);
