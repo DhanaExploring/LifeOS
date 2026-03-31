@@ -371,10 +371,6 @@ export function SettingsScreen({ state, dispatch, dark }) {
   // ③ Supabase
   const supabase = useSupabaseSync(state, dispatch);
 
-  const dataSize = (() => {
-    try { return (new Blob([localStorage.getItem(STORAGE_KEY) || ""]).size / 1024).toFixed(1); } catch { return "0"; }
-  })();
-
   function exportLocal() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -456,11 +452,6 @@ export function SettingsScreen({ state, dispatch, dark }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:32}}>
-      {/* Backup reminder banner */}
-      {showReminder && (
-        <BackupReminderBanner onExport={exportLocal} onDismiss={dismiss} dark={dark} />
-      )}
-
       {/* Profile Settings */}
       <div style={cardStyle}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
@@ -535,94 +526,7 @@ export function SettingsScreen({ state, dispatch, dark }) {
         </div>
       </div>
 
-      {/* Storage info */}
-      <div style={cardStyle}>
-        <p style={lblStyle}>Storage info</p>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {[
-            { label: "Goals", val: state.goals?.length || 0 },
-            { label: "Habits", val: state.habits?.length || 0 },
-            { label: "Journal entries", val: Object.keys(state.moods || {}).length },
-            { label: "Health logs", val: Object.keys(state.health || state.healthLogs || {}).length },
-            { label: "Storage used", val: `~${dataSize} KB` },
-          ].map(r => (
-            <div key={r.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={monoStyle(12)}>{r.label}</span>
-              <span style={monoStyle(12, d?t.di:t.ink)}>{r.val}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ① Auto-reminder */}
-      <div style={cardStyle}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-          <span style={{fontSize:15}}>🔔</span>
-          <p style={{...lblStyle,marginBottom:0,flex:1}}>Auto-reminder</p>
-          <span style={badgeStyle(true)}>Active</span>
-        </div>
-        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Reminds you to back up every few days</p>
-
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-          <span style={monoStyle(12, d?t.di2:t.ink2)}>Remind every</span>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            {[1, 3, 7, 14].map(v => (
-              <button key={v} onClick={() => { setBackupInterval(v); setMeta({ ...getMeta(), backupInterval: v }); }}
-                style={chipStyle(backupInterval === v, t.sage)}>{v}d</button>
-            ))}
-          </div>
-        </div>
-
-        {meta.lastLocalBackup && (
-          <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:12}}>
-            Last local backup: <span style={{fontWeight:500}}>{meta.lastLocalBackup}</span>
-            {" "}({daysSince(meta.lastLocalBackup) === 0 ? "today" : `${daysSince(meta.lastLocalBackup)}d ago`})
-          </p>
-        )}
-
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={exportLocal} style={{...btnFill(),flex:1,textAlign:"center"}}>⬇ Export JSON</button>
-          <label style={{...btnGhost,flex:1,textAlign:"center",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            ⬆ Import JSON
-            <input type="file" accept=".json" style={{display:"none"}} onChange={importLocal} />
-          </label>
-        </div>
-      </div>
-
       {/* ② Google Drive — hidden for now */}
-
-      {/* ③ Supabase Cloud Sync */}
-      <div style={cardStyle}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-          <span style={{fontSize:15}}>☁️</span>
-          <p style={{...lblStyle,marginBottom:0,flex:1}}>Supabase Cloud Sync</p>
-          <span style={badgeStyle(supabase.isConfigured)}>{supabase.isConfigured ? "Live" : "Setup needed"}</span>
-        </div>
-        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Real-time sync across all your devices</p>
-
-        {!supabase.isConfigured && (
-          <div style={{...infoBox("warn"),marginBottom:14}}>
-            <strong>Setup required:</strong> Add your Supabase URL + key to BackupSystem.jsx line ~145. Run the SQL in comments to create the table. Takes ~15 minutes at supabase.com (free).
-          </div>
-        )}
-
-        {supabase.isConfigured && (
-          <div style={{...infoBox("ok"),marginBottom:14}}>
-            ✓ Auto-syncing every 5 minutes. Last sync: {supabase.lastSynced || "not yet"}
-          </div>
-        )}
-
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={supabase.pushToCloud} disabled={supabase.syncStatus !== "idle"}
-            style={{...btnFill("#3ecf8e"),flex:1,textAlign:"center",opacity:supabase.syncStatus!=="idle"?0.6:1}}>
-            {statusLabel(supabase.syncStatus) || "⬆ Push to cloud"}
-          </button>
-          <button onClick={supabase.pullFromCloud} disabled={supabase.syncStatus !== "idle"}
-            style={{...btnGhost,flex:1,textAlign:"center",opacity:supabase.syncStatus!=="idle"?0.6:1}}>
-            {supabase.syncStatus !== "idle" ? "…" : "⬇ Pull from cloud"}
-          </button>
-        </div>
-      </div>
 
       {/* ④ Notifications */}
       <div style={cardStyle}>
@@ -705,27 +609,6 @@ export function SettingsScreen({ state, dispatch, dark }) {
             </div>
           );
         })()}
-      </div>
-
-      {/* How it all works */}
-      <div style={cardStyle}>
-        <p style={lblStyle}>How it all works</p>
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {[
-            { icon: "💾", title: "localStorage", desc: "Always on. Saves every change instantly to your browser." },
-            { icon: "🔔", title: "Auto-reminder", desc: "Nudges you to export a JSON backup every few days." },
-            { icon: "🗂", title: "Google Drive", desc: "One-click backup to your Drive. Restore on any device." },
-            { icon: "☁️", title: "Supabase sync", desc: "Real-time database. All devices stay in sync automatically." },
-          ].map(item => (
-            <div key={item.title} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-              <span style={{fontSize:16,marginTop:2}}>{item.icon}</span>
-              <div>
-                <p style={monoStyle(12, d?t.di:t.ink)}>{item.title}</p>
-                <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginTop:2}}>{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Danger zone */}

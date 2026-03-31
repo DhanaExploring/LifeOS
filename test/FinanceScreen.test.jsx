@@ -59,7 +59,7 @@ describe("FinanceScreen", () => {
     const dp = vi.fn();
     renderWithTheme(<FinanceScreen s={stateWithBudget} dp={dp} />);
     // Click the first checkmark button (Rent — unpaid)
-    const checkButtons = screen.getAllByRole("button").filter(b => b.style.borderRadius === "50%");
+    const checkButtons = screen.getAllByRole("button").filter(b => b.style.borderRadius === "100%");
     // The first round button for a budget item
     await user.click(checkButtons[0]);
     expect(dp).toHaveBeenCalledWith(expect.objectContaining({ type: "FIN_TOGGLE_PAID" }));
