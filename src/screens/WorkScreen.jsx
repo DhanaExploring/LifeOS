@@ -8,7 +8,6 @@ export default function WorkScreen({ s, dp }) {
   const work = s.work || { enabled: true, monthlyTarget: "", dailyTodos: [], reminders: [] };
   const breaks = s.breaks || { enabled: false, intervalMin: 60 };
   const [todoText, setTodoText] = useState("");
-  const [reminderText, setReminderText] = useState("");
   const [breakActive, setBreakActive] = useState(false);
   const [breakTimeLeft, setBreakTimeLeft] = useState(0);
   const breakTimer = useRef(null);
@@ -21,12 +20,6 @@ export default function WorkScreen({ s, dp }) {
     if (!todoText.trim()) return;
     dp({ type: "WORK_ADD_TODO", p: { id: Date.now(), text: todoText.trim(), done: false, date: today } });
     setTodoText("");
-  }
-
-  function addReminder() {
-    if (!reminderText.trim()) return;
-    dp({ type: "WORK_ADD_REMINDER", p: { id: Date.now(), text: reminderText.trim(), date: today } });
-    setReminderText("");
   }
 
   // Break timer
@@ -93,14 +86,14 @@ export default function WorkScreen({ s, dp }) {
       <div className="su" style={{ paddingTop: 8 }}>
         <Lbl>Weekly planner</Lbl>
         <Serif size={32}>Work</Serif>
-        <Mono size={12} style={{ marginTop: 4 }}>Quick offline planner — not your entire board</Mono>
+        <Mono size={12} style={{ marginTop: 4 }}>Small steps every day lead to big results ✦</Mono>
       </div>
 
-      {/* Monthly Target */}
+      {/* Weekly Target */}
       <Card>
-        <Lbl>Monthly target</Lbl>
+        <Lbl>Weekly target</Lbl>
         <Mono size={11} style={{ marginTop: -8, marginBottom: 12, color: d ? tk.di3 : tk.ink3 }}>
-          What's your main focus this month?
+          What's your main focus this week?
         </Mono>
         <textarea
           value={work.monthlyTarget}
@@ -145,12 +138,14 @@ export default function WorkScreen({ s, dp }) {
               <button
                 onClick={() => dp({ type: "WORK_TOGGLE_TODO", id: t.id })}
                 style={{
-                  width: 22, height: 22, borderRadius: 6, border: `2px solid ${t.done ? tk.sage : (d ? tk.di3 : tk.ink3)}`,
-                  background: t.done ? tk.sage : "transparent", cursor: "pointer",
+                  width: 20, height: 20, minWidth: 20, minHeight: 20, aspectRatio: "1/1", borderRadius: "100%", boxSizing: "border-box", flexShrink: 0,
+                  border: t.done ? "none" : `2px solid ${tk.sage}60`,
+                  background: t.done ? tk.sage : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, color: "#fff", flexShrink: 0,
+                  boxShadow: t.done ? `0 2px 6px ${tk.sage}40` : "none",
+                  cursor: "pointer", padding: 0, transition: "all 0.2s",
                 }}
-              >{t.done ? "✓" : ""}</button>
+              >{t.done && <span style={{ color: "#fff", fontSize: 11 }}>✓</span>}</button>
               <Mono size={12} style={{
                 flex: 1, textDecoration: t.done ? "line-through" : "none",
                 opacity: t.done ? 0.5 : 1,
@@ -186,46 +181,6 @@ export default function WorkScreen({ s, dp }) {
             </div>
           </div>
         )}
-      </Card>
-
-      {/* Reminders */}
-      <Card>
-        <Lbl>Important reminders</Lbl>
-        <Mono size={11} style={{ marginTop: -8, marginBottom: 12, color: d ? tk.di3 : tk.ink3 }}>
-          Things you don't want to forget
-        </Mono>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          <input
-            type="text"
-            value={reminderText}
-            onChange={e => setReminderText(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addReminder()}
-            placeholder="Add a reminder…"
-            maxLength={120}
-            style={inputStyle}
-          />
-          <button onClick={addReminder} style={{ ...addBtn, background: tk.gold }}>+</button>
-        </div>
-        {work.reminders.length === 0 && (
-          <Mono size={11} style={{ textAlign: "center", padding: "12px 0", color: d ? tk.di3 : tk.ink3 }}>
-            No reminders yet
-          </Mono>
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {work.reminders.map(r => (
-            <div key={r.id} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-              borderRadius: 12, background: d ? tk.gold + "12" : tk.goldL,
-            }}>
-              <span style={{ fontSize: 14 }}>🔔</span>
-              <Mono size={12} style={{ flex: 1 }}>{r.text}</Mono>
-              <button onClick={() => dp({ type: "WORK_DEL_REMINDER", id: r.id })} style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 14, color: d ? tk.di3 : tk.ink3, padding: 4,
-              }}>×</button>
-            </div>
-          ))}
-        </div>
       </Card>
 
       {/* Break Timer */}

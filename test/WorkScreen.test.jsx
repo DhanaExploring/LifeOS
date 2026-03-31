@@ -16,12 +16,12 @@ describe("WorkScreen", () => {
   it("renders heading and subtitle", () => {
     renderWithTheme(<WorkScreen s={baseState} dp={() => {}} />);
     expect(screen.getByText("Work")).toBeInTheDocument();
-    expect(screen.getByText(/quick offline planner/i)).toBeInTheDocument();
+    expect(screen.getByText(/small steps every day/i)).toBeInTheDocument();
   });
 
-  it("shows monthly target section", () => {
+  it("shows weekly target section", () => {
     renderWithTheme(<WorkScreen s={baseState} dp={() => {}} />);
-    expect(screen.getByText("Monthly target")).toBeInTheDocument();
+    expect(screen.getByText("Weekly target")).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/ship v2/i)).toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe("WorkScreen", () => {
     // Find the checkbox — it's a button with a 22px width style inside the todo row
     const allButtons = container.querySelectorAll("button");
     // Find the checkbox button (styled with width:22) near "Task 1"
-    const checkBtn = Array.from(allButtons).find(b => b.style.width === "22px" && b.style.height === "22px");
+    const checkBtn = Array.from(allButtons).find(b => b.style.width === "20px" && b.style.height === "20px");
     await user.click(checkBtn);
     expect(dp).toHaveBeenCalledWith({ type: "WORK_TOGGLE_TODO", id: 1 });
   });
@@ -85,34 +85,7 @@ describe("WorkScreen", () => {
     expect(dp).toHaveBeenCalledWith({ type: "WORK_DEL_TODO", id: 1 });
   });
 
-  it("shows reminders section", () => {
-    renderWithTheme(<WorkScreen s={baseState} dp={() => {}} />);
-    expect(screen.getByText("Important reminders")).toBeInTheDocument();
-    expect(screen.getByText("No reminders yet")).toBeInTheDocument();
-  });
-
-  it("dispatches WORK_ADD_REMINDER when adding a reminder", async () => {
-    const dp = vi.fn();
-    const user = userEvent.setup();
-    renderWithTheme(<WorkScreen s={baseState} dp={dp} />);
-    const input = screen.getByPlaceholderText("Add a reminder…");
-    await user.type(input, "Call client");
-    // Click the second "+" button (reminder add)
-    const addButtons = screen.getAllByText("+");
-    await user.click(addButtons[1]);
-    expect(dp).toHaveBeenCalledWith(expect.objectContaining({ type: "WORK_ADD_REMINDER", p: expect.objectContaining({ text: "Call client" }) }));
-  });
-
-  it("shows existing reminders", () => {
-    const withReminders = {
-      ...baseState,
-      work: { ...baseState.work, reminders: [{ id: 1, text: "Team standup at 10am", date: today }] },
-    };
-    renderWithTheme(<WorkScreen s={withReminders} dp={() => {}} />);
-    expect(screen.getByText("Team standup at 10am")).toBeInTheDocument();
-  });
-
-  it("dispatches WORK_TARGET on monthly target change", async () => {
+  it("dispatches WORK_TARGET on weekly target change", async () => {
     const dp = vi.fn();
     const user = userEvent.setup();
     renderWithTheme(<WorkScreen s={baseState} dp={dp} />);

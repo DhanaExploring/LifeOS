@@ -85,12 +85,12 @@ export default function FinanceScreen({ s, dp }) {
       opacity: b.paid ? 0.55 : 1, transition: "opacity 0.2s",
     }}>
       <button onClick={() => dp({ type: "FIN_TOGGLE_PAID", id: b.id })} style={{
-        width: 26, height: 26, borderRadius: "50%",
-        border: `2px solid ${b.paid ? "transparent" : (d ? tk.di3 : tk.cream3)}`,
+        width: 20, height: 20, minWidth: 20, minHeight: 20, aspectRatio: "1/1", borderRadius: "100%", boxSizing: "border-box",
+        border: `2px solid ${b.paid ? "transparent" : tk.sage + "60"}`,
         background: b.paid ? tk.sage : "transparent", cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s",
-        flexShrink: 0, boxShadow: b.paid ? `0 2px 8px ${tk.sage}50` : "none",
-      }}>{b.paid && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}</button>
+        flexShrink: 0, boxShadow: b.paid ? `0 2px 6px ${tk.sage}40` : "none",
+      }}>{b.paid && <span style={{ color: "#fff", fontSize: 11 }}>✓</span>}</button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Mono size={13} color={d ? tk.di : tk.ink} style={{ textDecoration: b.paid ? "line-through" : "none" }}>{b.name}</Mono>

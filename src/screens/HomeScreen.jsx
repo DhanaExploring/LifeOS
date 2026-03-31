@@ -16,6 +16,10 @@ export default function HomeScreen({ s, dp, go }) {
   const showCycle = profile.gender === "female";
   const ci   = showCycle ? calcPhase(s.cycle?.start, s.cycle?.len) : null;
   const ph   = ci ? PHASES[ci.phase] : null;
+  const work = s.work || { enabled: false, monthlyTarget: "", dailyTodos: [] };
+  const workEnabled = work.enabled;
+  const todayTasks = (work.dailyTodos || []).filter(t => t.date === today);
+  const tasksDone = todayTasks.filter(t => t.done).length;
 
   const mwk = Array.from({ length: 7 }).map((_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - (6 - i));
@@ -120,6 +124,51 @@ export default function HomeScreen({ s, dp, go }) {
           </div>
         </Card>
       </div>
+
+      {/* Work snippet */}
+      {workEnabled && (
+        <div style={tile}>
+          <Card>
+            <div onClick={() => go("work")} style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <Lbl style={{ marginBottom: 0 }}>Today's work</Lbl>
+              <Mono size={10} color={tk.sage}>{tasksDone}/{todayTasks.length} done</Mono>
+            </div>
+            {todayTasks.length === 0 ? (
+              <Mono size={12} color={d ? tk.di3 : tk.ink3} onClick={() => go("work")} style={{ cursor: "pointer" }}>No tasks yet — tap to plan your day</Mono>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {todayTasks.slice(0, 3).map(t => (
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button
+                      onClick={() => dp({ type: "WORK_TOGGLE_TODO", id: t.id })}
+                      style={{
+                        width: 16, height: 16, minWidth: 16, minHeight: 16, aspectRatio: "1/1", borderRadius: "100%", boxSizing: "border-box", flexShrink: 0,
+                        border: t.done ? "none" : `2px solid ${tk.sage}60`,
+                        background: t.done ? tk.sage : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: t.done ? `0 2px 6px ${tk.sage}40` : "none",
+                        cursor: "pointer", padding: 0, transition: "all 0.2s",
+                      }}
+                    >{t.done && <span style={{ color: "#fff", fontSize: 9 }}>✓</span>}</button>
+                    <Mono size={12} style={{
+                      textDecoration: t.done ? "line-through" : "none",
+                      opacity: t.done ? 0.5 : 1,
+                    }}>{t.text}</Mono>
+                  </div>
+                ))}
+                {todayTasks.length > 3 && (
+                  <Mono size={10} color={d ? tk.di3 : tk.ink3} onClick={() => go("work")} style={{ cursor: "pointer" }}>+{todayTasks.length - 3} more</Mono>
+                )}
+              </div>
+            )}
+            {work.monthlyTarget?.trim() && (
+              <Mono size={10} style={{ marginTop: 10, color: tk.gold, fontStyle: "italic" }}>
+                🎯 {work.monthlyTarget.trim().length > 60 ? work.monthlyTarget.trim().slice(0, 60) + "…" : work.monthlyTarget.trim()}
+              </Mono>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* Mood chart */}
       {mwk.filter(x => x.score !== null).length > 1 && (

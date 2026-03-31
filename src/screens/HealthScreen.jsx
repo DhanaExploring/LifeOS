@@ -25,13 +25,13 @@ function Check({ on, color = tk.sage, onToggle, label }) {
       textAlign: "left",
     }}>
       <span style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        border: on ? "none" : `2px solid ${d ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
+        width: 20, height: 20, minWidth: 20, minHeight: 20, aspectRatio: "1/1", borderRadius: "100%", boxSizing: "border-box", flexShrink: 0,
+        border: on ? "none" : `2px solid ${color}60`,
         background: on ? color : "transparent",
         display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 0.2s", boxShadow: on ? `0 2px 8px ${color}40` : "none",
+        transition: "all 0.2s", boxShadow: on ? `0 2px 6px ${color}40` : "none",
       }}>
-        {on && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
+        {on && <span style={{ color: "#fff", fontSize: 11 }}>✓</span>}
       </span>
       <Mono size={13} color={d ? tk.di2 : tk.ink2} style={{
         textDecoration: on ? "line-through" : "none",
