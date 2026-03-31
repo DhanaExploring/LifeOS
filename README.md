@@ -23,7 +23,6 @@ src/
 │   ├── GoalsScreen.jsx   # Goals CRUD with category filter pills
 │   ├── HealthScreen.jsx  # Water, sleep, steps, workout, habits, weekly chart
 │   ├── FinanceScreen.jsx # Monthly budgeting — recurring/one-time expenses, investments
-│   ├── JournalScreen.jsx # Mood picker, reflection, recent entries
 │   ├── CycleScreen.jsx   # Menstrual cycle tracker with phase calendar & symptoms
 │   └── InsightsScreen.jsx# Cross-section analytics & charts
 ├── LifeOS_preview.jsx    # Root shell — wires reducer, Supabase sync, nav, layout
