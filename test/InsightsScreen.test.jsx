@@ -20,7 +20,6 @@ const state = {
     { id: 2, title: "Save money", prog: 40, status: "In Progress", cat: "Finance" },
   ],
   finance: { income: 50000, budget: [{ id: 1, amount: 15000, paid: true }, { id: 2, amount: 5000, paid: false }], investments: [] },
-  content: { ideas: [], planned: 0, done: 2, goal: 5 },
   moods: {},
 };
 
@@ -36,15 +35,16 @@ describe("InsightsScreen", () => {
     expect(screen.getByText("Goal progress")).toBeInTheDocument();
   });
 
-  it("shows goals done count", () => {
-    renderWithTheme(<InsightsScreen s={state} />);
-    expect(screen.getByText("0/2")).toBeInTheDocument();
+  it("shows work tile when enabled", () => {
+    const s = { ...state, work: { enabled: true, monthlyTarget: "", dailyTodos: [] } };
+    renderWithTheme(<InsightsScreen s={s} />);
+    expect(screen.getByText("Work")).toBeInTheDocument();
   });
 
-  it("shows content stats", () => {
+  it("shows habits tile", () => {
     renderWithTheme(<InsightsScreen s={state} />);
-    expect(screen.getByText("2/5")).toBeInTheDocument();
-    expect(screen.getByText("Content")).toBeInTheDocument();
+    expect(screen.getByText("Habits")).toBeInTheDocument();
+    expect(screen.getByText("done today")).toBeInTheDocument();
   });
 
   it("shows goal breakdown", () => {

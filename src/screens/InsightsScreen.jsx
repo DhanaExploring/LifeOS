@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, CAT, pct, today } from "../constants";
+import { tk, CAT, pct, today, H_DAILY_HABITS } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, PBar } from "../ui";
 
@@ -12,14 +12,14 @@ export default function InsightsScreen({ s }) {
   const workEnabled = work.enabled !== false;
   const todayTasks = (work.dailyTodos || []).filter(t => t.date === today);
   const todayDone = todayTasks.filter(t => t.done).length;
-  const allTasks = work.dailyTodos || [];
-  const weekTasks = allTasks.filter(t => {
-    const d2 = new Date(t.date + "T00:00:00");
-    const now = new Date();
-    const diff = (now - d2) / 86400000;
-    return diff >= 0 && diff < 7;
-  });
-  const weekDone = weekTasks.filter(t => t.done).length;
+
+  const healthDaily = (s.health?.daily || {})[today] || {};
+  const healthCfg = s.health?.config || { customHabits: [], hiddenDefaults: [] };
+  const activeHabits = [
+    ...H_DAILY_HABITS.filter((_, i) => !(healthCfg.hiddenDefaults || []).includes(i)),
+    ...(healthCfg.customHabits || []),
+  ];
+  const habsDone = activeHabits.filter(h => (healthDaily.habits || {})[h]).length;
 
   const mwk = Array.from({ length: 7 }).map((_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - (6 - i));
@@ -36,20 +36,26 @@ export default function InsightsScreen({ s }) {
       <div className="su" style={{ paddingTop: 8 }}><Lbl>Monthly overview</Lbl><Serif size={32}>Insights</Serif></div>
 
       {/* Stats grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {[
+      {(() => {
+        const tiles = [
           { l: "Goal progress", v: `${avg}%`, s: "avg across all", c: tk.sage },
           { l: "Budget paid", v: `${pct((f.budget || []).filter(b => b.paid).length, (f.budget || []).length)}%`, s: "of planned items", c: tk.gold },
-          { l: "Goals done", v: `${s.goals.filter(g => g.status === "Completed").length}/${s.goals.length}`, s: "completed", c: tk.sky },
-          { l: "Content", v: `${s.content.done}/${s.content.goal}`, s: "weekly target", c: tk.plum },
-        ].map(it => (
-          <Card key={it.l} style={{ textAlign: "center", padding: "22px 14px" }}>
-            <Serif size={26} color={it.c}>{it.v}</Serif>
-            <Mono size={11} color={d ? tk.di : tk.ink2} style={{ marginTop: 8 }}>{it.l}</Mono>
-            <Mono size={10} style={{ marginTop: 4 }}>{it.s}</Mono>
-          </Card>
-        ))}
-      </div>
+          { l: "Habits", v: `${habsDone}/${activeHabits.length}`, s: "done today", c: tk.plum },
+          ...(workEnabled ? [{ l: "Work", v: `${todayDone}/${todayTasks.length}`, s: "today's tasks", c: tk.sky }] : []),
+        ];
+        const isOdd = tiles.length % 2 !== 0;
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {tiles.map((it, i) => (
+              <Card key={it.l} style={{ textAlign: "center", padding: "22px 14px", ...(isOdd && i === tiles.length - 1 ? { gridColumn: "1 / -1" } : {}) }}>
+                <Serif size={26} color={it.c}>{it.v}</Serif>
+                <Mono size={11} color={d ? tk.di : tk.ink2} style={{ marginTop: 8 }}>{it.l}</Mono>
+                <Mono size={10} style={{ marginTop: 4 }}>{it.s}</Mono>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Goal breakdown */}
       <Card>
@@ -80,25 +86,10 @@ export default function InsightsScreen({ s }) {
       </Card>
 
       {/* Work snapshot */}
-      {workEnabled && (
+      {workEnabled && work.monthlyTarget?.trim() && (
         <Card>
-          <Lbl>Work snapshot</Lbl>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-            <div style={{ textAlign: "center", padding: "14px 8px", borderRadius: 14, background: d ? tk.d3 : tk.cream2 }}>
-              <Serif size={24} color={tk.sage}>{todayDone}/{todayTasks.length}</Serif>
-              <Mono size={10} style={{ marginTop: 6 }}>Today's tasks</Mono>
-            </div>
-            <div style={{ textAlign: "center", padding: "14px 8px", borderRadius: 14, background: d ? tk.d3 : tk.cream2 }}>
-              <Serif size={24} color={tk.sky}>{weekDone}/{weekTasks.length}</Serif>
-              <Mono size={10} style={{ marginTop: 6 }}>This week</Mono>
-            </div>
-          </div>
-          {work.monthlyTarget?.trim() && (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: d ? tk.d3 : tk.cream2 }}>
-              <Mono size={10} color={tk.gold} style={{ marginBottom: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>Weekly focus</Mono>
-              <Mono size={12} color={d ? tk.di2 : tk.ink2}>{work.monthlyTarget.trim()}</Mono>
-            </div>
-          )}
+          <Lbl>Weekly focus</Lbl>
+          <Mono size={12} color={d ? tk.di2 : tk.ink2}>{work.monthlyTarget.trim()}</Mono>
           {todayTasks.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <PBar v={pct(todayDone, todayTasks.length)} color={tk.sage} />
