@@ -10,8 +10,11 @@ export default function HomeScreen({ s, dp, go }) {
   const done = Object.values(th).filter(Boolean).length;
   const hpct = s.habits.length ? pct(done, s.habits.length) : 0;
   const hr   = new Date().getHours();
+  const profile = s.profile || {};
+  const userName = profile.name || "";
   const greet = hr < 5 ? "Still up?" : hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
-  const ci   = calcPhase(s.cycle?.start, s.cycle?.len);
+  const showCycle = profile.gender === "female";
+  const ci   = showCycle ? calcPhase(s.cycle?.start, s.cycle?.len) : null;
   const ph   = ci ? PHASES[ci.phase] : null;
 
   const mwk = Array.from({ length: 7 }).map((_, i) => {
@@ -29,7 +32,7 @@ export default function HomeScreen({ s, dp, go }) {
         <Mono size={11} color={d ? tk.di3 : tk.ink3} style={{ letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </Mono>
-        <Serif size={34}>{greet} <span style={{ color: tk.sage }}>☯</span></Serif>
+        <Serif size={34}>{greet}{userName ? `, ${userName}` : ""} <span style={{ color: tk.sage }}>☯</span></Serif>
         <Mono size={12} style={{ marginTop: 4 }}>Here's your life at a glance.</Mono>
       </div>
 

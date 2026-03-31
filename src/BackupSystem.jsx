@@ -358,6 +358,9 @@ export function useSupabaseSync(appState, dispatch, userId) {
 export function SettingsScreen({ state, dispatch, dark }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [backupInterval, setBackupInterval] = useState(getMeta().backupInterval || 3);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState((state.profile || {}).name || "");
+  const [profileGender, setProfileGender] = useState((state.profile || {}).gender || "");
 
   // ① Auto-reminder
   const { showReminder, dismiss, markDone } = useBackupReminder(backupInterval);
@@ -457,6 +460,80 @@ export function SettingsScreen({ state, dispatch, dark }) {
       {showReminder && (
         <BackupReminderBanner onExport={exportLocal} onDismiss={dismiss} dark={dark} />
       )}
+
+      {/* Profile Settings */}
+      <div style={cardStyle}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <span style={{fontSize:15}}>👤</span>
+          <p style={{...lblStyle,marginBottom:0,flex:1}}>Profile</p>
+          <span style={badgeStyle(!!(state.profile?.name && state.profile?.gender))}>
+            {state.profile?.name ? "Set" : "Not set"}
+          </span>
+        </div>
+        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Your name and gender (controls cycle visibility)</p>
+
+        {!editingProfile ? (
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={monoStyle(12)}>Name</span>
+              <span style={monoStyle(12, d?t.di:t.ink)}>{state.profile?.name || "—"}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={monoStyle(12)}>Gender</span>
+              <span style={monoStyle(12, d?t.di:t.ink)}>
+                {state.profile?.gender === "female" ? "Female" : state.profile?.gender === "male" ? "Male" : state.profile?.gender === "other" ? "Other" : "—"}
+              </span>
+            </div>
+            <button onClick={() => { setProfileName((state.profile||{}).name||""); setProfileGender((state.profile||{}).gender||""); setEditingProfile(true); }} style={{...btnFill(),width:"100%",textAlign:"center",marginTop:6}}>
+              Edit profile
+            </button>
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div>
+              <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:6}}>Name</p>
+              <input type="text" value={profileName} onChange={e=>setProfileName(e.target.value)} maxLength={50} placeholder="Your name…"
+                style={{width:"100%",boxSizing:"border-box",fontFamily:"'DM Mono',monospace",fontSize:12,padding:"10px 14px",borderRadius:12,border:`1px solid ${d?"rgba(255,255,255,0.1)":"rgba(44,36,22,0.12)"}`,background:d?t.d3:t.cream2,color:d?t.di:t.ink,outline:"none"}} />
+            </div>
+            <div>
+              <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:6}}>Gender</p>
+              <div style={{display:"flex",gap:8}}>
+                {[{id:"female",label:"Female",emoji:"♀"},{id:"male",label:"Male",emoji:"♂"},{id:"other",label:"Other",emoji:"⚧"}].map(g=>(
+                  <button key={g.id} onClick={()=>setProfileGender(g.id)} style={{
+                    flex:1,padding:"10px 6px",borderRadius:12,cursor:"pointer",textAlign:"center",transition:"all 0.2s",
+                    border:profileGender===g.id?`2px solid ${t.sage}`:`1px solid ${d?"rgba(255,255,255,0.08)":"rgba(44,36,22,0.1)"}`,
+                    background:profileGender===g.id?(d?t.sage+"20":t.sageL):(d?t.d3:t.cream2),
+                  }}>
+                    <span style={{fontSize:18,display:"block",marginBottom:4}}>{g.emoji}</span>
+                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:profileGender===g.id?t.sage:(d?t.di2:t.ink2)}}>{g.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button onClick={()=>setEditingProfile(false)} style={{...btnGhost,textAlign:"center"}}>Cancel</button>
+              <button onClick={()=>{ if(profileName.trim()&&profileGender){dispatch({type:"PROFILE",p:{name:profileName.trim(),gender:profileGender}});setEditingProfile(false);} }} style={{...btnFill(),textAlign:"center",opacity:profileName.trim()&&profileGender?1:0.5}}>Save</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Work Section Toggle */}
+      <div style={cardStyle}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <span style={{fontSize:15}}>▤</span>
+          <p style={{...lblStyle,marginBottom:0,flex:1}}>Work section</p>
+        </div>
+        <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Toggle the work planner on or off</p>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={monoStyle(12, d?t.di:t.ink)}>Show Work tab</span>
+          <button onClick={()=>dispatch({type:"WORK_TOGGLE"})} style={{
+            ...chipStyle((state.work||{}).enabled !== false, t.sage),width:40,borderRadius:12,fontSize:10,
+          }}>
+            {(state.work||{}).enabled !== false ? "ON" : "OFF"}
+          </button>
+        </div>
+      </div>
 
       {/* Storage info */}
       <div style={cardStyle}>

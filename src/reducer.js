@@ -1,6 +1,7 @@
 // ── Initial State ────────────────────────────────────────────────────────────
 export const INIT = {
   dark: false,
+  profile: { name: "", gender: "" },
   habits: [],
   habitLogs: {},
   goals: [],
@@ -10,6 +11,8 @@ export const INIT = {
   moods: {},
   cycle: { start: "", len: 28, logs: {} },
   notifications: { morning: true, evening: true, morningTime: "08:00", eveningTime: "21:00" },
+  work: { enabled: true, monthlyTarget: "", dailyTodos: [], reminders: [] },
+  breaks: { enabled: false, intervalMin: 60 },
 };
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
@@ -153,8 +156,38 @@ export function reducer(s, a) {
       const imp = { ...INIT, ...a.payload, dark: s.dark };
       if (!imp.health || !imp.health.daily) imp.health = { ...INIT.health };
       if (!imp.health.config) imp.health.config = INIT.health.config;
+      if (!imp.profile) imp.profile = INIT.profile;
+      if (!imp.work) imp.work = INIT.work;
+      if (!imp.breaks) imp.breaks = INIT.breaks;
       return imp;
     }
+
+    case "PROFILE":
+      return { ...s, profile: { ...(s.profile || INIT.profile), ...a.p } };
+
+    case "WORK_TOGGLE":
+      return { ...s, work: { ...(s.work || INIT.work), enabled: !(s.work || INIT.work).enabled } };
+
+    case "WORK_TARGET":
+      return { ...s, work: { ...(s.work || INIT.work), monthlyTarget: a.v } };
+
+    case "WORK_ADD_TODO":
+      return { ...s, work: { ...(s.work || INIT.work), dailyTodos: [...(s.work || INIT.work).dailyTodos, a.p] } };
+
+    case "WORK_TOGGLE_TODO":
+      return { ...s, work: { ...(s.work || INIT.work), dailyTodos: (s.work || INIT.work).dailyTodos.map(t => t.id === a.id ? { ...t, done: !t.done } : t) } };
+
+    case "WORK_DEL_TODO":
+      return { ...s, work: { ...(s.work || INIT.work), dailyTodos: (s.work || INIT.work).dailyTodos.filter(t => t.id !== a.id) } };
+
+    case "WORK_ADD_REMINDER":
+      return { ...s, work: { ...(s.work || INIT.work), reminders: [...(s.work || INIT.work).reminders, a.p] } };
+
+    case "WORK_DEL_REMINDER":
+      return { ...s, work: { ...(s.work || INIT.work), reminders: (s.work || INIT.work).reminders.filter(r => r.id !== a.id) } };
+
+    case "BREAKS":
+      return { ...s, breaks: { ...(s.breaks || INIT.breaks), ...a.p } };
 
     case "NOTIF_PREFS":
       return { ...s, notifications: { ...(s.notifications || INIT.notifications), [a.k]: a.v } };

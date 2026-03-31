@@ -13,6 +13,8 @@ import HealthScreen from "./screens/HealthScreen";
 import FinanceScreen from "./screens/FinanceScreen";
 import CycleScreen from "./screens/CycleScreen";
 import InsightsScreen from "./screens/InsightsScreen";
+import WorkScreen from "./screens/WorkScreen";
+import ProfileSetup from "./screens/ProfileSetup";
 
 const SCREENS = {
   home:    HomeScreen,
@@ -21,6 +23,7 @@ const SCREENS = {
   finance: FinanceScreen,
   cycle:   CycleScreen,
   insights:InsightsScreen,
+  work:    WorkScreen,
 };
 
 // ── Root Component ───────────────────────────────────────────────────────────
@@ -72,6 +75,25 @@ export default function LifeOS({ signOut, userEmail, userId }) {
     }
   }, [state.notifications]);
 
+  const profile = state.profile || {};
+  const showCycle = profile.gender === "female";
+  const workEnabled = (state.work || INIT.work).enabled !== false;
+  const needsProfile = !profile.name || !profile.gender;
+
+  // Filter nav items based on profile settings
+  const visibleNav = NAV.filter(n => {
+    if (n.id === "cycle" && !showCycle) return false;
+    if (n.id === "work" && !workEnabled) return false;
+    return true;
+  });
+
+  // Redirect to home if current screen is hidden
+  useEffect(() => {
+    if (!loading && !needsProfile && !visibleNav.some(n => n.id === screen) && !showSettings) {
+      setScreen("home");
+    }
+  }, [showCycle, workEnabled, loading]);
+
   const Screen = SCREENS[screen];
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -85,6 +107,16 @@ export default function LifeOS({ signOut, userEmail, userId }) {
             <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: dark ? tk.di3 : tk.ink3, marginTop: 16 }}>Loading your data…</p>
           </div>
         </div>
+      </ThemeCtx.Provider>
+    );
+  }
+
+  // ── Profile setup for new users ────────────────────────────────────────────
+  if (needsProfile) {
+    return (
+      <ThemeCtx.Provider value={{ d: dark }}>
+        <Fonts />
+        <ProfileSetup dp={dispatch} onDone={() => {}} existingProfile={profile} />
       </ThemeCtx.Provider>
     );
   }
@@ -183,7 +215,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
             padding: "10px 4px 20px",
           }}>
             <div style={{ display: "flex", justifyContent: "space-around" }}>
-              {NAV.map(n => {
+              {visibleNav.map(n => {
                 const on = screen === n.id;
                 return (
                   <button key={n.id} onClick={() => setScreen(n.id)} style={{

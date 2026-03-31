@@ -176,6 +176,7 @@ export const NAV = [
   {id:"goals",   icon:"◎", label:"Goals"},
   {id:"health",  icon:"♡", label:"Health"},
   {id:"finance", icon:"◇", label:"Finance"},
+  {id:"work",    icon:"▤", label:"Work"},
   {id:"cycle",   icon:"◉", label:"Cycle"},
   {id:"insights",icon:"◈", label:"Insights"},
 ];
