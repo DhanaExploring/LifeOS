@@ -4,7 +4,7 @@ import { tk, NAV } from "./constants";
 import { INIT, reducer } from "./reducer";
 import { ThemeCtx, Fonts } from "./ThemeContext";
 import { Mono } from "./ui";
-import { registerSW, requestPermission, scheduleNotifications } from "./notifications";
+import { registerSW, requestPermission, scheduleNotifications, initVisibilityHandler } from "./notifications";
 
 // ── Screens ──────────────────────────────────────────────────────────────────
 import HomeScreen from "./screens/HomeScreen";
@@ -59,6 +59,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
   // Register service worker + schedule notifications
   useEffect(() => {
     registerSW();
+    initVisibilityHandler();
     requestPermission().then((granted) => {
       if (granted) {
         const prefs = state.notifications || INIT.notifications;

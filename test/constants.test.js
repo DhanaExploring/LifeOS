@@ -11,7 +11,7 @@ describe("constants", () => {
 
   it("CAT and CATL have matching keys", () => {
     const keys = Object.keys(CAT);
-    expect(keys).toEqual(["Work", "Health", "Finance", "Content"]);
+    expect(keys).toEqual(["Work", "Health", "Finance"]);
     expect(Object.keys(CATL)).toEqual(keys);
   });
 

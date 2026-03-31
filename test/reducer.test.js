@@ -184,6 +184,17 @@ describe("reducer", () => {
     expect(s2.content.ideas).toEqual([]);
   });
 
+  // ── Custom Categories ──────────────────────────────────────────────────
+  it("ADD_CATEGORY adds a custom category", () => {
+    const s = reducer(INIT, { type: "ADD_CATEGORY", name: "Learning" });
+    expect(s.customCategories).toEqual(["Learning"]);
+  });
+
+  it("DEL_CATEGORY removes a custom category", () => {
+    const s = reducer({ ...INIT, customCategories: ["Learning", "Travel"] }, { type: "DEL_CATEGORY", name: "Learning" });
+    expect(s.customCategories).toEqual(["Travel"]);
+  });
+
   // ── Mood ────────────────────────────────────────────────────────────────
   it("MOOD saves a mood entry", () => {
     const s = reducer(INIT, { type: "MOOD", d: "2025-03-28", mood: 0, note: "Great day" });

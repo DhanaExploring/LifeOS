@@ -66,6 +66,17 @@ describe("GoalsScreen", () => {
     expect(screen.getByText("Build")).toBeInTheDocument();
   });
 
+  it("shows + Category button that allows adding custom category", async () => {
+    const user = userEvent.setup();
+    const dp = vi.fn();
+    renderWithTheme(<GoalsScreen s={state} dp={dp} />);
+    await user.click(screen.getByText("+ Category"));
+    const nameInput = screen.getByPlaceholderText("Name…");
+    await user.type(nameInput, "Learning");
+    await user.click(screen.getByText("Add"));
+    expect(dp).toHaveBeenCalledWith({ type: "ADD_CATEGORY", name: "Learning" });
+  });
+
   it("shows empty state when filter has no goals", async () => {
     const user = userEvent.setup();
     renderWithTheme(<GoalsScreen s={state} dp={() => {}} />);

@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, CAT, PHASES, calcPhase, today, pct } from "../constants";
+import { tk, catColor, PHASES, calcPhase, today, pct } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, Ring } from "../ui";
 
@@ -114,10 +114,10 @@ export default function HomeScreen({ s, dp, go }) {
               <div key={g.id}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
                   <Mono size={12} color={d ? tk.di2 : tk.ink2}>{g.title}</Mono>
-                  <Mono size={11} color={CAT[g.cat]}>{g.prog}%</Mono>
+                  <Mono size={11} color={catColor(g.cat)}>{g.prog}%</Mono>
                 </div>
                 <div style={{ width: "100%", height: 5, borderRadius: 5, background: d ? tk.d3 : tk.cream3, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${g.prog}%`, background: CAT[g.cat], borderRadius: 5, transition: "width 0.55s cubic-bezier(0.34,1.56,0.64,1)" }} />
+                  <div style={{ height: "100%", width: `${g.prog}%`, background: catColor(g.cat), borderRadius: 5, transition: "width 0.55s cubic-bezier(0.34,1.56,0.64,1)" }} />
                 </div>
               </div>
             ))}

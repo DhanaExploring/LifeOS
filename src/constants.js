@@ -16,8 +16,13 @@ export const tk = {
 };
 
 // ── Category Colors ──────────────────────────────────────────────────────────
-export const CAT  = { Work:tk.sky, Health:tk.sage, Finance:tk.gold, Content:tk.plum };
-export const CATL = { Work:tk.skyL, Health:tk.sageL, Finance:tk.goldL, Content:tk.plumL };
+export const CAT  = { Work:tk.sky, Health:tk.sage, Finance:tk.gold };
+export const CATL = { Work:tk.skyL, Health:tk.sageL, Finance:tk.goldL };
+export const DEFAULT_CATS = ["Work", "Health", "Finance"];
+const EXTRA_COLORS  = [tk.plum, tk.rose, tk.sky, tk.sage, tk.gold];
+const EXTRA_COLORSL = [tk.plumL, tk.roseL, tk.skyL, tk.sageL, tk.goldL];
+export function catColor(name)  { return CAT[name] || EXTRA_COLORS[Math.abs([...name].reduce((a,c)=>a+c.charCodeAt(0),0)) % EXTRA_COLORS.length]; }
+export function catColorL(name) { return CATL[name] || EXTRA_COLORSL[Math.abs([...name].reduce((a,c)=>a+c.charCodeAt(0),0)) % EXTRA_COLORSL.length]; }
 
 // ── Today's date key ─────────────────────────────────────────────────────────
 export const today = new Date().toISOString().split("T")[0];
@@ -89,7 +94,8 @@ export function calcPhase(startDate, len = 28) {
   if (!startDate) return null;
   const start = new Date(startDate + "T00:00:00");
   const now   = new Date();
-  const diff  = Math.floor((now - start) / 86400000);
+  now.setHours(0, 0, 0, 0);
+  const diff  = Math.round((now - start) / 86400000);
   if (diff < 0) return null;
   const day = (diff % len) + 1;
   let phase;

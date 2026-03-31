@@ -1,6 +1,9 @@
 // ── Notification Scheduler ────────────────────────────────────────────────────
-// Schedules morning & evening browser notifications via the service worker.
-// Works when the app tab is open or when installed as a PWA.
+// Schedules morning & evening notifications via the service worker.
+// Uses three layers for reliability on mobile PWAs:
+//   1. Periodic Background Sync — wakes the SW even when the app is closed (Chrome Android)
+//   2. Foreground setTimeout — fires when the app tab is open
+//   3. visibilitychange re-init — recalculates timers when returning from background
 
 const MORNING_MESSAGES = [
   { title: "Good morning ☀", body: "Start your day with intention. Open LifeOS to set today's mood and affirmation." },
@@ -27,12 +30,13 @@ function msUntil(hour, minute = 0) {
   const now = new Date();
   const target = new Date(now);
   target.setHours(hour, minute, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1); // already passed → tomorrow
+  if (target <= now) target.setDate(target.getDate() + 1);
   return target - now;
 }
 
 let morningTimer = null;
 let eveningTimer = null;
+let currentPrefs = null;
 
 function sendViaServiceWorker(msg) {
   if (!("serviceWorker" in navigator)) return;
@@ -41,13 +45,17 @@ function sendViaServiceWorker(msg) {
   });
 }
 
+/** Sync notification preferences to the service worker for background scheduling. */
+function syncPrefsToSW(prefs) {
+  sendViaServiceWorker({ type: "SYNC_PREFS", prefs });
+}
+
 function scheduleMorning(hour = 8, minute = 0) {
   clearTimeout(morningTimer);
   const delay = msUntil(hour, minute);
   morningTimer = setTimeout(() => {
     const m = pick(MORNING_MESSAGES);
     sendViaServiceWorker({ type: "SHOW_NOTIFICATION", title: m.title, body: m.body, tag: "lifeos-morning" });
-    // Re-schedule for next day
     scheduleMorning(hour, minute);
   }, delay);
 }
@@ -58,7 +66,6 @@ function scheduleEvening(hour = 21, minute = 0) {
   eveningTimer = setTimeout(() => {
     const m = pick(EVENING_MESSAGES);
     sendViaServiceWorker({ type: "SHOW_NOTIFICATION", title: m.title, body: m.body, tag: "lifeos-evening" });
-    // Re-schedule for next day
     scheduleEvening(hour, minute);
   }, delay);
 }
@@ -73,30 +80,41 @@ export async function requestPermission() {
   return result === "granted";
 }
 
-/** Register the service worker (call once on app load). */
+/** Register the service worker + periodic background sync. */
 export async function registerSW() {
   if (!("serviceWorker" in navigator)) return null;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
+
+    // Register Periodic Background Sync (Chrome Android for installed PWAs)
+    if ("periodicSync" in reg) {
+      try {
+        await reg.periodicSync.register("lifeos-notif-check", { minInterval: 12 * 60 * 60 * 1000 }); // ~12h
+      } catch { /* permission not granted or not supported — OK, foreground timers still work */ }
+    }
+
     return reg;
   } catch {
     return null;
   }
 }
 
-/** Start or restart notification scheduling based on user preferences.
+/** Start or restart notification scheduling.
  *  @param {{ morning: boolean, evening: boolean, morningTime: string, eveningTime: string }} prefs
- *    morningTime / eveningTime are "HH:MM" strings like "08:00" or "21:00"
  */
 export function scheduleNotifications(prefs) {
-  // Clear existing
   clearTimeout(morningTimer);
   clearTimeout(eveningTimer);
   morningTimer = null;
   eveningTimer = null;
+  currentPrefs = prefs;
 
-  if (Notification.permission !== "granted") return;
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
 
+  // Sync prefs to SW for background scheduling
+  syncPrefsToSW(prefs);
+
+  // Foreground setTimeout fallback
   if (prefs.morning) {
     const [h, m] = (prefs.morningTime || "08:00").split(":").map(Number);
     scheduleMorning(h, m);
@@ -113,4 +131,17 @@ export function cancelNotifications() {
   clearTimeout(eveningTimer);
   morningTimer = null;
   eveningTimer = null;
+  currentPrefs = null;
+  // Tell SW to clear prefs
+  syncPrefsToSW(null);
+}
+
+/** Call this once on app init — re-syncs timers when returning from background. */
+export function initVisibilityHandler() {
+  if (typeof document === "undefined") return;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && currentPrefs) {
+      scheduleNotifications(currentPrefs);
+    }
+  });
 }

@@ -5,6 +5,7 @@ export const INIT = {
   habits: [],
   habitLogs: {},
   goals: [],
+  customCategories: [],
   health: { daily: {}, weekly: {}, config: { customHabits: [], hiddenDefaults: [] } },
   finance: { income: 0, budget: [], investments: [], month: new Date().toISOString().slice(0, 7) },
   content: { ideas: [], planned: 0, done: 0, goal: 0 },
@@ -62,6 +63,12 @@ export function reducer(s, a) {
 
     case "DEL_GOAL":
       return { ...s, goals: s.goals.filter(g => g.id !== a.id) };
+
+    case "ADD_CATEGORY":
+      return { ...s, customCategories: [...(s.customCategories || []), a.name] };
+
+    case "DEL_CATEGORY":
+      return { ...s, customCategories: (s.customCategories || []).filter(c => c !== a.name) };
 
     case "FIN": {
       const fin = { ...s.finance, budget: s.finance.budget || [], investments: s.finance.investments || [] };

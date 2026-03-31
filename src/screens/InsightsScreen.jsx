@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, CAT, pct, today, H_DAILY_HABITS } from "../constants";
+import { tk, catColor, pct, today, H_DAILY_HABITS } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, PBar } from "../ui";
 
@@ -65,9 +65,9 @@ export default function InsightsScreen({ s }) {
             <div key={g.id}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
                 <Mono size={11} color={d ? tk.di : tk.ink2}>{g.title.length > 32 ? g.title.slice(0, 32) + "…" : g.title}</Mono>
-                <Mono size={11} color={CAT[g.cat]}>{g.prog}%</Mono>
+                <Mono size={11} color={catColor(g.cat)}>{g.prog}%</Mono>
               </div>
-              <PBar v={g.prog} color={CAT[g.cat]} />
+              <PBar v={g.prog} color={catColor(g.cat)} />
             </div>
           ))}
         </div>
