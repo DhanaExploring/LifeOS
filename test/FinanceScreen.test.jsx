@@ -93,4 +93,21 @@ describe("FinanceScreen", () => {
     // Income 50000 - budget 17500 = 32500 remaining
     expect(screen.getByText(/remaining after budget/i)).toBeInTheDocument();
   });
+
+  it("shows money breakdown with savings", () => {
+    renderWithTheme(<FinanceScreen s={stateWithBudget} dp={() => {}} />);
+    expect(screen.getByText("Money breakdown")).toBeInTheDocument();
+    expect(screen.getByText("Savings / Left to plan")).toBeInTheDocument();
+  });
+
+  it("shows investments subtracted in money breakdown", () => {
+    renderWithTheme(<FinanceScreen s={stateWithBudget} dp={() => {}} />);
+    // Investment of 5000 should appear
+    expect(screen.getByText("Investments")).toBeInTheDocument();
+  });
+
+  it("shows add investment button", () => {
+    renderWithTheme(<FinanceScreen s={stateWithBudget} dp={() => {}} />);
+    expect(screen.getByText("+ Add investment")).toBeInTheDocument();
+  });
 });

@@ -35,22 +35,24 @@ export default function LifeOS({ signOut, userEmail, userId }) {
   const [loading, setLoading] = useState(true);
   const dark = state.dark;
   const initialLoad = useRef(true);
+  const syncReady = useRef(false);
   const remoteImport = useRef(false);
   const lastPushTs = useRef(0);
   const latestState = useRef(state);
   latestState.current = state;
 
   const LS_KEY = "lifeos_state";
+  const log = (...a) => console.log("[LifeOS sync]", ...a);
 
   // ── 1. Save every state change to localStorage immediately (zero-delay safety net)
   useEffect(() => {
-    if (initialLoad.current) return; // don't overwrite before first load completes
+    if (initialLoad.current) return;
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
   }, [state]);
 
   // ── 2. Load on mount: localStorage first (instant), then Supabase (merge newer)
   useEffect(() => {
-    // Immediately restore from localStorage so the UI is never empty
+    log("mount — loading localStorage + Supabase…");
     let localState = null;
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -59,68 +61,80 @@ export default function LifeOS({ signOut, userEmail, userId }) {
     if (localState) {
       dispatch({ type: "IMPORT_STATE", payload: localState });
       lastPushTs.current = localState._updated_at || 0;
+      log("localStorage loaded, _updated_at =", localState._updated_at || "none");
     }
 
-    if (!userId) { setLoading(false); return; }
+    if (!userId) {
+      initialLoad.current = false;
+      syncReady.current = true;
+      setLoading(false);
+      return;
+    }
 
-    // Then pull from Supabase and take whichever is newer
     pullFromSupabase(userId)
       .then(cloudData => {
-        if (!cloudData) return;
+        if (!cloudData) { log("no cloud data found — will push local to cloud"); return; }
         const cloudTime = cloudData._updated_at || 0;
         const localTime = localState?._updated_at || 0;
+        log("cloud _updated_at =", cloudTime, "| local _updated_at =", localTime);
         if (!localState || cloudTime >= localTime) {
-          remoteImport.current = true;
           lastPushTs.current = cloudTime;
           dispatch({ type: "IMPORT_STATE", payload: cloudData });
-        }
-        if (localState && localTime > cloudTime) {
+          log("imported cloud data (newer)");
+        } else {
           lastPushTs.current = localTime;
-          pushToSupabase(localState, userId).catch(() => {});
+          pushToSupabase({ ...localState, _updated_at: localTime }, userId).catch(() => {});
+          log("pushed local data to cloud (newer)");
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch((e) => log("pull FAILED:", e))
+      .finally(() => {
+        initialLoad.current = false;
+        syncReady.current = true;
+        setLoading(false);
+        log("sync ready ✓");
+      });
   }, [userId]);
 
-  // ── 3. Debounced Supabase push (every local state change)
+  // ── 3. Debounced Supabase push (only for LOCAL user actions, never during init)
   useEffect(() => {
-    if (initialLoad.current) { initialLoad.current = false; return; }
-    if (loading || !userId) return;
-    // Skip push if this state change came from a remote import
-    if (remoteImport.current) { remoteImport.current = false; return; }
+    if (!syncReady.current || !userId) return;
+    if (remoteImport.current) { remoteImport.current = false; log("skip push (remote import)"); return; }
     const t = setTimeout(() => {
       const ts = Date.now();
       const withTs = { ...latestState.current, _updated_at: ts };
       lastPushTs.current = ts;
       try { localStorage.setItem(LS_KEY, JSON.stringify(withTs)); } catch {}
       pushToSupabase(withTs, userId)
-        .catch((err) => console.error("[LifeOS] sync failed:", err));
+        .then(() => log("pushed to cloud, ts =", ts))
+        .catch((err) => log("push FAILED:", err));
     }, 600);
     return () => clearTimeout(t);
-  }, [state, loading, userId]);
+  }, [state, userId]);
 
   // ── 4. Flush to Supabase when tab hidden / pull fresh data when tab visible
   useEffect(() => {
     if (!userId) return;
     function flushNow() {
+      if (!syncReady.current) return;
       const ts = Date.now();
       const s = { ...latestState.current, _updated_at: ts };
       lastPushTs.current = ts;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
       pushToSupabase(s, userId).catch(() => {});
+      log("flushed on tab hide, ts =", ts);
     }
     function pullIfNewer() {
       pullFromSupabase(userId)
         .then(cloudData => {
           if (!cloudData) return;
           const cloudTime = cloudData._updated_at || 0;
-          // Only import if cloud is newer than our last push (i.e. from another device)
           if (cloudTime > lastPushTs.current) {
             remoteImport.current = true;
             lastPushTs.current = cloudTime;
             dispatch({ type: "IMPORT_STATE", payload: cloudData });
             try { localStorage.setItem(LS_KEY, JSON.stringify(cloudData)); } catch {}
+            log("tab-focus pull: imported cloud data, ts =", cloudTime);
           }
         })
         .catch(() => {});
@@ -144,15 +158,16 @@ export default function LifeOS({ signOut, userEmail, userId }) {
   // ── 5. Supabase Realtime — instant sync when another device writes
   useEffect(() => {
     if (!userId) return;
+    log("subscribing to Realtime…");
     const unsub = subscribeRealtime(userId, (cloudData) => {
       if (!cloudData) return;
       const cloudTime = cloudData._updated_at || 0;
-      // Ignore echoes of our own pushes — only import if newer than our last push
       if (cloudTime > lastPushTs.current) {
         remoteImport.current = true;
         lastPushTs.current = cloudTime;
         dispatch({ type: "IMPORT_STATE", payload: cloudData });
         try { localStorage.setItem(LS_KEY, JSON.stringify(cloudData)); } catch {}
+        log("realtime: imported from another device, ts =", cloudTime);
       }
     });
     return unsub;
@@ -161,6 +176,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
   // ── 6. Polling fallback — auto-pull every 15s while tab is visible
   useEffect(() => {
     if (!userId) return;
+    log("polling started (every 15s)");
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       pullFromSupabase(userId)
@@ -172,6 +188,7 @@ export default function LifeOS({ signOut, userEmail, userId }) {
             lastPushTs.current = cloudTime;
             dispatch({ type: "IMPORT_STATE", payload: cloudData });
             try { localStorage.setItem(LS_KEY, JSON.stringify(cloudData)); } catch {}
+            log("poll: imported newer cloud data, ts =", cloudTime);
           }
         })
         .catch(() => {});

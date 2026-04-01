@@ -37,6 +37,9 @@ export default function FinanceScreen({ s, dp }) {
   const recurring = f.budget.filter(b => b.repeat);
   const oneTime = f.budget.filter(b => !b.repeat);
 
+  const totalInvest = f.investments.reduce((a, v) => a + (v.amount || 0), 0);
+  const savings = f.income - totalBudget - totalInvest;
+
   function addItem() {
     if (!ef.name.trim() || !ef.amount) return;
     dp({ type: "FIN_ADD_ITEM", p: { id: Date.now(), name: ef.name.trim(), amount: +ef.amount, repeat: ef.repeat, cat: ef.cat, paid: false } });
@@ -160,6 +163,37 @@ export default function FinanceScreen({ s, dp }) {
         )}
       </Card>
 
+      {/* Savings breakdown */}
+      {f.income > 0 && (
+        <Card>
+          <Lbl>Money breakdown</Lbl>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Mono size={12} color={d ? tk.di2 : tk.ink2}>Income</Mono>
+              <Mono size={12} color={tk.sage}>₹{f.income.toLocaleString()}</Mono>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Mono size={12} color={d ? tk.di2 : tk.ink2}>Budget planned</Mono>
+              <Mono size={12} color={tk.rose}>−₹{totalBudget.toLocaleString()}</Mono>
+            </div>
+            {totalInvest > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <Mono size={12} color={d ? tk.di2 : tk.ink2}>Investments</Mono>
+                <Mono size={12} color={tk.sky}>−₹{totalInvest.toLocaleString()}</Mono>
+              </div>
+            )}
+            <div style={{ height: 1, background: d ? "rgba(255,255,255,0.07)" : "rgba(44,36,22,0.09)", margin: "2px 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Mono size={13} color={d ? tk.di : tk.ink} style={{ fontWeight: 600 }}>{savings >= 0 ? "Savings / Left to plan" : "Overspent"}</Mono>
+              <Serif size={20} color={savings >= 0 ? tk.sage : tk.rose}>{savings >= 0 ? "" : "−"}₹{Math.abs(savings).toLocaleString()}</Serif>
+            </div>
+            {f.income > 0 && (
+              <PBar v={Math.max(0, pct(Math.max(0, savings), f.income))} color={savings >= 0 ? tk.sage : tk.rose} h={5} />
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Edit form */}
       {editing && renderForm(true)}
 
@@ -221,15 +255,17 @@ export default function FinanceScreen({ s, dp }) {
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input value={invText} onChange={e => setInvText(e.target.value)} placeholder="e.g. SIP, FD, Stocks…" style={{ ...inp, flex: 2 }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, padding: "12px 14px", borderRadius: 14, border: `1px solid ${divC}`, background: d ? tk.d3 : tk.cream }}>
-            <Mono size={11}>₹</Mono>
-            <input type="number" value={invAmt} onChange={e => setInvAmt(e.target.value)} placeholder="0"
-              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontFamily: "'DM Mono',monospace", fontSize: 12, color: d ? tk.di : tk.ink }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={invText} onChange={e => setInvText(e.target.value)} placeholder="e.g. SIP, FD, Stocks…" style={{ ...inp, flex: 1 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 0, minWidth: 100, padding: "12px 14px", borderRadius: 14, border: `1px solid ${divC}`, background: d ? tk.d3 : tk.cream }}>
+              <Mono size={11}>₹</Mono>
+              <input type="number" value={invAmt} onChange={e => setInvAmt(e.target.value)} placeholder="0"
+                style={{ flex: 1, width: "100%", background: "transparent", border: "none", outline: "none", fontFamily: "'DM Mono',monospace", fontSize: 12, color: d ? tk.di : tk.ink }} />
+            </div>
           </div>
           <button onClick={() => { if (invText.trim()) { dp({ type: "FIN_ADD_INV", p: { id: Date.now(), name: invText.trim(), amount: +invAmt || 0 } }); setInvText(""); setInvAmt(""); } }}
-            style={{ padding: "12px 16px", borderRadius: 14, background: tk.sky, border: "none", color: "#fff", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, flexShrink: 0 }}>Add</button>
+            style={{ width: "100%", padding: "13px 16px", borderRadius: 14, background: tk.sky, border: "none", color: "#fff", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: "0.03em" }}>+ Add investment</button>
         </div>
       </Card>
 
