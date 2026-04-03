@@ -23,7 +23,12 @@ export default function WorkScreen({ s, dp }) {
     }
     // Weekly reset: clear weekly target on Monday
     const dayOfWeek = new Date().getDay();
-    const weekKey = `${new Date().getFullYear()}-W${Math.ceil((new Date().getTime() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000)}`;
+    const d2 = new Date();
+    d2.setHours(0, 0, 0, 0);
+    d2.setDate(d2.getDate() + 3 - ((d2.getDay() + 6) % 7));
+    const yearStart = new Date(d2.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d2 - yearStart) / 86400000 - 3 + ((yearStart.getDay() + 6) % 7)) / 7);
+    const weekKey = `${d2.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
     if (dayOfWeek === 1 && work.lastWeeklyReset !== weekKey) {
       dp({ type: "WORK_WEEKLY_RESET", week: weekKey });
     }
@@ -178,7 +183,7 @@ export default function WorkScreen({ s, dp }) {
               Carry-over ({otherTodos.length})
             </Mono>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {otherTodos.slice(0, 5).map(t => (
+              {otherTodos.map(t => (
                 <div key={t.id} style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "6px 12px",
                   borderRadius: 10, background: d ? tk.d1 : tk.cream2, opacity: 0.7,

@@ -58,9 +58,18 @@ describe("reducer", () => {
   it("IMPORT_STATE migrates old health format", () => {
     const payload = { health: { "2025-03-28": { water: 8 } } };
     const s = reducer(INIT, { type: "IMPORT_STATE", payload });
+    // Old format has no .daily key, so sub-keys get defaults
     expect(s.health.daily).toEqual({});
     expect(s.health.weekly).toEqual({});
     expect(s.health.config).toEqual(INIT.health.config);
+  });
+
+  it("IMPORT_STATE preserves health sub-keys independently", () => {
+    const payload = { health: { config: { customHabits: ["Meditate"], hiddenDefaults: [0] }, weekly: { "w1": { pattern: "test" } } } };
+    const s = reducer(INIT, { type: "IMPORT_STATE", payload });
+    expect(s.health.daily).toEqual({});
+    expect(s.health.weekly).toEqual({ "w1": { pattern: "test" } });
+    expect(s.health.config.customHabits).toEqual(["Meditate"]);
   });
 
   // ── Configurable Health Habits ──────────────────────────────────────────
@@ -143,7 +152,7 @@ describe("reducer", () => {
     expect(s.finance.budget[0].paid).toBe(true);
   });
 
-  it("FIN_RESET_MONTH resets recurring items and removes paid one-time items", () => {
+  it("FIN_RESET_MONTH resets recurring items and removes all one-time items", () => {
     const state = {
       ...INIT,
       finance: {
@@ -158,10 +167,10 @@ describe("reducer", () => {
     };
     const s = reducer(state, { type: "FIN_RESET_MONTH", m: "2025-03" });
     expect(s.finance.month).toBe("2025-03");
-    // Recurring gets paid=false, paid one-time removed, unpaid one-time kept
-    expect(s.finance.budget).toHaveLength(2);
-    expect(s.finance.budget[0].paid).toBe(false); // Rent reset
-    expect(s.finance.budget[1].name).toBe("Trip"); // unpaid one-time kept
+    // Only recurring kept (paid reset), all one-time items removed
+    expect(s.finance.budget).toHaveLength(1);
+    expect(s.finance.budget[0].name).toBe("Rent");
+    expect(s.finance.budget[0].paid).toBe(false);
   });
 
   it("FIN_ADD_INV / FIN_DEL_INV manage investments", () => {

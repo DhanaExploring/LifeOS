@@ -47,18 +47,19 @@ function MoodRow({ label, moods, value, onPick }) {
   return (
     <Card>
       <Lbl>{label}</Lbl>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 4, overflow: "hidden" }}>
         {moods.map((m, i) => (
           <button key={i} onClick={() => onPick(value === i ? null : i)} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            padding: "12px 10px", borderRadius: 16, border: "none", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            padding: "10px 6px", borderRadius: 14, border: "none", cursor: "pointer",
+            flex: "1 1 0", minWidth: 0,
             background: value === i ? `${tk.sage}20` : "transparent",
-            transform: value === i ? "scale(1.1)" : "scale(1)",
+            transform: value === i ? "scale(1.05)" : "scale(1)",
             opacity: value != null && value !== i ? 0.35 : 1,
             transition: "all 0.2s",
           }}>
-            <span style={{ fontSize: 28 }}>{m.e}</span>
-            <Mono size={10} color={value === i ? tk.sage : (d ? tk.di3 : tk.ink3)}>{m.l}</Mono>
+            <span style={{ fontSize: 24 }}>{m.e}</span>
+            <Mono size={9} color={value === i ? tk.sage : (d ? tk.di3 : tk.ink3)} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{m.l}</Mono>
           </button>
         ))}
       </div>

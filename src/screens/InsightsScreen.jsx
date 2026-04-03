@@ -24,12 +24,13 @@ export default function InsightsScreen({ s }) {
   const mwk = Array.from({ length: 7 }).map((_, i) => {
     const dt = new Date(); dt.setDate(dt.getDate() - (6 - i));
     const k = dt.toISOString().split("T")[0];
-    const e = s.moods[k];
-    return { day: dt.toLocaleDateString("en-US", { weekday: "short" }), score: e?.mood != null ? 5 - e.mood : 0 };
+    const e = (s.health?.daily || {})[k];
+    return { day: dt.toLocaleDateString("en-US", { weekday: "short" }), score: e?.mindMood != null ? e.mindMood + 1 : null };
   });
 
   const budgetTotal = (f.budget || []).reduce((a, b) => a + b.amount, 0);
-  const remaining = f.income - budgetTotal;
+  const totalInvest = (f.investments || []).reduce((a, v) => a + (v.amount || 0), 0);
+  const remaining = f.income - budgetTotal - totalInvest;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 32 }}>
@@ -61,6 +62,9 @@ export default function InsightsScreen({ s }) {
       <Card>
         <Lbl>Goal breakdown</Lbl>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {s.goals.length === 0 && (
+            <Mono size={12} color={d ? tk.di3 : tk.ink3} style={{ textAlign: "center", padding: "8px 0" }}>No goals yet — add some in Goals.</Mono>
+          )}
           {s.goals.map(g => (
             <div key={g.id}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
@@ -111,6 +115,12 @@ export default function InsightsScreen({ s }) {
             <Mono size={13}>Budget planned</Mono>
             <Mono size={13} color={tk.rose}>-₹{budgetTotal.toLocaleString()}</Mono>
           </div>
+          {totalInvest > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Mono size={13}>Investments</Mono>
+              <Mono size={13} color={tk.sky}>-₹{totalInvest.toLocaleString()}</Mono>
+            </div>
+          )}
           <div style={{ height: 1, background: d ? "rgba(255,255,255,0.06)" : "rgba(44,36,22,0.08)", margin: "4px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Mono size={13} color={d ? tk.di : tk.ink}>Remaining</Mono>

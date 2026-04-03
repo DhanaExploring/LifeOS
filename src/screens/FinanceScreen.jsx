@@ -25,7 +25,7 @@ export default function FinanceScreen({ s, dp }) {
   // Auto reset on the configured day
   useEffect(() => {
     const todayDay = new Date().getDate();
-    if (f.resetDay && todayDay >= f.resetDay && f.month && f.month !== curMonth) {
+    if (f.month && f.month !== curMonth && todayDay >= (f.resetDay || 1)) {
       dp({ type: "FIN_RESET_MONTH", m: curMonth });
       setResetNotice(true);
     }
@@ -155,10 +155,10 @@ export default function FinanceScreen({ s, dp }) {
             style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontFamily: "'DM Mono',monospace", fontSize: 13, color: d ? tk.di : tk.ink }} />
         </div>
         {f.income > 0 && (
-          <Mono size={11} color={totalBudget > f.income ? tk.rose : tk.sage} style={{ marginTop: 10 }}>
-            {totalBudget > f.income
-              ? `⚠ Budget exceeds income by ₹${(totalBudget - f.income).toLocaleString()}`
-              : `✓ ₹${(f.income - totalBudget).toLocaleString()} remaining after budget`}
+          <Mono size={11} color={(totalBudget + totalInvest) > f.income ? tk.rose : tk.sage} style={{ marginTop: 10 }}>
+            {(totalBudget + totalInvest) > f.income
+              ? `⚠ Expenses exceed income by ₹${((totalBudget + totalInvest) - f.income).toLocaleString()}`
+              : `✓ ₹${(f.income - totalBudget - totalInvest).toLocaleString()} remaining after budget & investments`}
           </Mono>
         )}
       </Card>
@@ -257,7 +257,7 @@ export default function FinanceScreen({ s, dp }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <input value={invText} onChange={e => setInvText(e.target.value)} placeholder="e.g. SIP, FD, Stocks…" style={{ ...inp, flex: 1 }} />
+            <input value={invText} onChange={e => setInvText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && invText.trim()) { dp({ type: "FIN_ADD_INV", p: { id: Date.now(), name: invText.trim(), amount: +invAmt || 0 } }); setInvText(""); setInvAmt(""); } }} placeholder="e.g. SIP, FD, Stocks…" style={{ ...inp, flex: 1 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 0, minWidth: 100, padding: "12px 14px", borderRadius: 14, border: `1px solid ${divC}`, background: d ? tk.d3 : tk.cream }}>
               <Mono size={11}>₹</Mono>
               <input type="number" value={invAmt} onChange={e => setInvAmt(e.target.value)} placeholder="0"

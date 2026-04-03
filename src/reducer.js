@@ -7,7 +7,7 @@ export const INIT = {
   goals: [],
   customCategories: [],
   health: { daily: {}, weekly: {}, config: { customHabits: [], hiddenDefaults: [] } },
-  finance: { income: 0, budget: [], investments: [], month: new Date().toISOString().slice(0, 7) },
+  finance: { income: 0, budget: [], investments: [], month: new Date().toISOString().slice(0, 7), resetDay: 1 },
   content: { ideas: [], planned: 0, done: 0, goal: 0 },
   moods: {},
   cycle: { start: "", len: 28, logs: {} },
@@ -94,8 +94,8 @@ export function reducer(s, a) {
           ...s.finance,
           month: a.m,
           budget: (s.finance.budget || [])
-            .map(b => b.repeat ? { ...b, paid: false } : b)
-            .filter(b => b.repeat || !b.paid),
+            .filter(b => b.repeat)
+            .map(b => ({ ...b, paid: false })),
         },
       };
 
@@ -161,8 +161,10 @@ export function reducer(s, a) {
 
     case "IMPORT_STATE": {
       const imp = { ...INIT, ...a.payload, dark: s.dark };
-      if (!imp.health || !imp.health.daily) imp.health = { ...INIT.health };
-      if (!imp.health.config) imp.health.config = INIT.health.config;
+      if (!imp.health) imp.health = { ...INIT.health };
+      if (!imp.health.daily) imp.health.daily = {};
+      if (!imp.health.weekly) imp.health.weekly = {};
+      if (!imp.health.config) imp.health.config = { ...INIT.health.config };
       if (!imp.profile) imp.profile = INIT.profile;
       if (!imp.work) imp.work = INIT.work;
       if (!imp.breaks) imp.breaks = INIT.breaks;

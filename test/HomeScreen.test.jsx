@@ -30,9 +30,9 @@ describe("HomeScreen", () => {
     expect(screen.getByText(/here's your life at a glance/i)).toBeInTheDocument();
   });
 
-  it("shows habit ring with 0/1 when none done", () => {
+  it("shows habit ring with 0/3 when none done", () => {
     renderWithTheme(<HomeScreen s={baseState} dp={() => {}} go={() => {}} />);
-    expect(screen.getByText("0/1 today")).toBeInTheDocument();
+    expect(screen.getByText("0/3 today")).toBeInTheDocument();
   });
 
   it("shows top goals", () => {

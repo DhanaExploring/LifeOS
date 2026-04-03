@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { requestPermission, scheduleNotifications, cancelNotifications } from "./notifications";
 
-const STORAGE_KEY = "lifeos_data_v1";
+const STORAGE_KEY = "lifeos_state";
 const BACKUP_META_KEY = "lifeos_backup_meta";
 const today = new Date().toISOString().split("T")[0];
 
@@ -554,19 +554,19 @@ export function SettingsScreen({ state, dispatch, dark }) {
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
           <span style={{fontSize:15}}>🔔</span>
           <p style={{...lblStyle,marginBottom:0,flex:1}}>Daily notifications</p>
-          <span style={badgeStyle(Notification.permission === "granted")}>
-            {Notification.permission === "granted" ? "Enabled" : "Off"}
+          <span style={badgeStyle(typeof Notification !== "undefined" && Notification.permission === "granted")}>
+            {typeof Notification !== "undefined" && Notification.permission === "granted" ? "Enabled" : "Off"}
           </span>
         </div>
         <p style={{...monoStyle(11),color:d?t.di3:t.ink3,marginBottom:16}}>Gentle reminders to start and close your day</p>
 
-        {Notification.permission === "denied" && (
+        {typeof Notification !== "undefined" && Notification.permission === "denied" && (
           <div style={{...infoBox("warn"),marginBottom:14}}>
             Notifications are blocked by your browser. Re-enable them in your browser's site settings.
           </div>
         )}
 
-        {Notification.permission !== "granted" && Notification.permission !== "denied" && (
+        {typeof Notification !== "undefined" && Notification.permission !== "granted" && Notification.permission !== "denied" && (
           <button onClick={async () => {
             const ok = await requestPermission();
             if (ok) {
@@ -578,7 +578,7 @@ export function SettingsScreen({ state, dispatch, dark }) {
           </button>
         )}
 
-        {Notification.permission === "granted" && (() => {
+        {typeof Notification !== "undefined" && Notification.permission === "granted" && (() => {
           const prefs = state.notifications || { morning: true, evening: true, morningTime: "08:00", eveningTime: "21:00" };
           return (
             <div style={{display:"flex",flexDirection:"column",gap:14}}>

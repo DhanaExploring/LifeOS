@@ -1,14 +1,19 @@
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { tk, catColor, PHASES, calcPhase, today, pct } from "../constants";
+import { tk, catColor, PHASES, calcPhase, today, pct, H_DAILY_HABITS } from "../constants";
 import { useT } from "../ThemeContext";
 import { Card, Lbl, Serif, Mono, Ring } from "../ui";
 
 export default function HomeScreen({ s, dp, go }) {
   const { d } = useT();
   const hd   = (s.health.daily || {})[today] || { mindMood: null, bodyMood: null, habits: {}, grateful: "", brainDump: "", affirmation: "" };
-  const th   = s.habitLogs[today] || {};
-  const done = Object.values(th).filter(Boolean).length;
-  const hpct = s.habits.length ? pct(done, s.habits.length) : 0;
+  const healthCfg = s.health?.config || { customHabits: [], hiddenDefaults: [] };
+  const activeHabits = [
+    ...H_DAILY_HABITS.filter((_, i) => !(healthCfg.hiddenDefaults || []).includes(i)),
+    ...(healthCfg.customHabits || []),
+  ];
+  const habs = hd.habits || {};
+  const done = activeHabits.filter(h => !!habs[h]).length;
+  const hpct = activeHabits.length ? pct(done, activeHabits.length) : 0;
   const hr   = new Date().getHours();
   const profile = s.profile || {};
   const userName = profile.name || "";
@@ -83,7 +88,7 @@ export default function HomeScreen({ s, dp, go }) {
           <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", gap: 10, height: "100%", boxSizing: "border-box" }}>
             <Ring v={hpct} />
             <Lbl style={{ marginBottom: 2, textAlign: "center" }}>Habits done</Lbl>
-            <Mono size={11} color={tk.sage}>{done}/{s.habits.length} today</Mono>
+            <Mono size={11} color={tk.sage}>{done}/{activeHabits.length} today</Mono>
           </Card>
         </div>
         <div onClick={() => go("health")} style={tile}>
@@ -92,8 +97,8 @@ export default function HomeScreen({ s, dp, go }) {
             {hd.grateful?.trim()
               ? <>
                   <span style={{ fontSize: 28, color: tk.sage }}>❋</span>
-                  <Serif size={14} style={{ textAlign: "center", lineHeight: 1.4, fontStyle: "italic" }}>
-                    {hd.grateful.trim().length > 50 ? hd.grateful.trim().slice(0, 50) + "…" : hd.grateful.trim()}
+                  <Serif size={14} style={{ textAlign: "center", lineHeight: 1.4, fontStyle: "italic", wordBreak: "break-word" }}>
+                    {hd.grateful.trim()}
                   </Serif>
                 </>
               : <>
@@ -162,8 +167,8 @@ export default function HomeScreen({ s, dp, go }) {
               </div>
             )}
             {work.monthlyTarget?.trim() && (
-              <Mono size={10} style={{ marginTop: 10, color: tk.gold, fontStyle: "italic" }}>
-                🎯 {work.monthlyTarget.trim().length > 60 ? work.monthlyTarget.trim().slice(0, 60) + "…" : work.monthlyTarget.trim()}
+              <Mono size={10} style={{ marginTop: 10, color: tk.gold, fontStyle: "italic", lineHeight: 1.5, wordBreak: "break-word" }}>
+                🎯 {work.monthlyTarget.trim()}
               </Mono>
             )}
           </Card>
@@ -190,7 +195,7 @@ export default function HomeScreen({ s, dp, go }) {
         <div onClick={() => go("health")} style={tile}>
           <Card style={{ background: d ? tk.d1 : tk.cream2, border: "none" }}>
             <Lbl>Today's brain dump</Lbl>
-            <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: 15, color: d ? tk.di : tk.ink2, lineHeight: 1.65 }}>"{hd.brainDump.trim().length > 80 ? hd.brainDump.trim().slice(0, 80) + '…' : hd.brainDump.trim()}"</p>
+            <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: 15, color: d ? tk.di : tk.ink2, lineHeight: 1.65, wordBreak: "break-word" }}>"{hd.brainDump.trim()}"</p>
           </Card>
         </div>
       )}

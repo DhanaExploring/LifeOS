@@ -20,7 +20,6 @@ const state = {
     { id: 2, title: "Save money", prog: 40, status: "In Progress", cat: "Finance" },
   ],
   finance: { income: 50000, budget: [{ id: 1, amount: 15000, paid: true }, { id: 2, amount: 5000, paid: false }], investments: [] },
-  moods: {},
 };
 
 describe("InsightsScreen", () => {

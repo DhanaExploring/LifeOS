@@ -143,14 +143,16 @@ export default function LifeOS({ signOut, userEmail, userId }) {
       if (document.visibilityState === "hidden") flushNow();
       else if (document.visibilityState === "visible") pullIfNewer();
     }
-    window.addEventListener("beforeunload", () => {
+    function handleBeforeUnload() {
       const ts = Date.now();
       const s = { ...latestState.current, _updated_at: ts };
       lastPushTs.current = ts;
       try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
-    });
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [userId]);
