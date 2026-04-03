@@ -8,9 +8,39 @@ export default function WorkScreen({ s, dp }) {
   const work = s.work || { enabled: true, monthlyTarget: "", dailyTodos: [], reminders: [] };
   const breaks = s.breaks || { enabled: false, intervalMin: 60 };
   const [todoText, setTodoText] = useState("");
-  const [breakActive, setBreakActive] = useState(false);
-  const [breakTimeLeft, setBreakTimeLeft] = useState(0);
-  const breakTimer = useRef(null);
+  const [now, setNow] = useState(Date.now());
+  const tickRef = useRef(null);
+
+  // Derive timer state from persisted breakStartedAt
+  const breakStartedAt = breaks.breakStartedAt || 0;
+  const totalSec = (breaks.intervalMin || 60) * 60;
+  const elapsed = breakStartedAt ? Math.floor((now - breakStartedAt) / 1000) : 0;
+  const breakActive = breakStartedAt > 0 && elapsed < totalSec;
+  const breakTimeLeft = breakActive ? totalSec - elapsed : 0;
+
+  // Tick every second while timer is active
+  useEffect(() => {
+    if (!breakStartedAt) return;
+    tickRef.current = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tickRef.current);
+  }, [breakStartedAt]);
+
+  // Fire notification when timer expires
+  useEffect(() => {
+    if (breakStartedAt && elapsed >= totalSec) {
+      dp({ type: "BREAKS", p: { breakStartedAt: 0 } });
+      if ("serviceWorker" in navigator && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        navigator.serviceWorker.ready.then(reg => {
+          if (reg.active) reg.active.postMessage({
+            type: "SHOW_NOTIFICATION",
+            title: "Time for a break! ☕",
+            body: "You've been working hard. Stand up, stretch, and rest your eyes.",
+            tag: "lifeos-break",
+          });
+        });
+      }
+    }
+  }, [breakStartedAt, elapsed >= totalSec]);
 
   // Filter todos for today
   const todayTodos = work.dailyTodos.filter(t => t.date === today);
@@ -40,43 +70,15 @@ export default function WorkScreen({ s, dp }) {
     setTodoText("");
   }
 
-  // Break timer
+  // Break timer controls
   function startBreakTimer() {
-    setBreakActive(true);
-    setBreakTimeLeft(breaks.intervalMin * 60);
+    dp({ type: "BREAKS", p: { breakStartedAt: Date.now() } });
+    setNow(Date.now());
   }
 
   function stopBreakTimer() {
-    setBreakActive(false);
-    setBreakTimeLeft(0);
-    if (breakTimer.current) clearInterval(breakTimer.current);
+    dp({ type: "BREAKS", p: { breakStartedAt: 0 } });
   }
-
-  useEffect(() => {
-    if (!breakActive) return;
-    breakTimer.current = setInterval(() => {
-      setBreakTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(breakTimer.current);
-          setBreakActive(false);
-          // Send notification if available
-          if ("serviceWorker" in navigator && Notification.permission === "granted") {
-            navigator.serviceWorker.ready.then(reg => {
-              if (reg.active) reg.active.postMessage({
-                type: "SHOW_NOTIFICATION",
-                title: "Time for a break! ☕",
-                body: "You've been working hard. Stand up, stretch, and rest your eyes.",
-                tag: "lifeos-break",
-              });
-            });
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(breakTimer.current);
-  }, [breakActive]);
 
   const formatTime = (sec) => {
     const m = Math.floor(sec / 60);

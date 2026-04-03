@@ -132,6 +132,31 @@ describe("WorkScreen", () => {
     expect(dp).toHaveBeenCalledWith({ type: "BREAKS", p: { enabled: true } });
   });
 
+  it("dispatches BREAKS with breakStartedAt when starting timer", async () => {
+    const dp = vi.fn();
+    const user = userEvent.setup();
+    const withBreaks = { ...baseState, breaks: { enabled: true, intervalMin: 60 } };
+    renderWithTheme(<WorkScreen s={withBreaks} dp={dp} />);
+    await user.click(screen.getByText("▶ Start work timer"));
+    expect(dp).toHaveBeenCalledWith(expect.objectContaining({ type: "BREAKS", p: expect.objectContaining({ breakStartedAt: expect.any(Number) }) }));
+  });
+
+  it("shows countdown and stop button when timer is active", () => {
+    const withTimer = { ...baseState, breaks: { enabled: true, intervalMin: 60, breakStartedAt: Date.now() - 10000 } };
+    renderWithTheme(<WorkScreen s={withTimer} dp={() => {}} />);
+    expect(screen.getByText("Stop timer")).toBeInTheDocument();
+    expect(screen.getByText(/until your next break/i)).toBeInTheDocument();
+  });
+
+  it("dispatches BREAKS to clear breakStartedAt when stopping timer", async () => {
+    const dp = vi.fn();
+    const user = userEvent.setup();
+    const withTimer = { ...baseState, breaks: { enabled: true, intervalMin: 60, breakStartedAt: Date.now() - 10000 } };
+    renderWithTheme(<WorkScreen s={withTimer} dp={dp} />);
+    await user.click(screen.getByText("Stop timer"));
+    expect(dp).toHaveBeenCalledWith({ type: "BREAKS", p: { breakStartedAt: 0 } });
+  });
+
   // ── Carry-over ──────────────────────────────────────────────────────────
   it("shows carry-over section for undone tasks from other days", () => {
     const withOld = {
